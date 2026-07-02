@@ -48,7 +48,6 @@
         .calibration-mode input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
         .calibration-mode label { font-size: 14px; color: #ccc; cursor: pointer; user-select: none; }
 
-        /* OSCILOSKOP */
         .debug-panel { background: #111; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
         .debug-title { font-size: 12px; color: #aaa; margin-bottom: 8px; display: block; text-align: center; }
         .debug-timeline { display: flex; width: 100%; height: 30px; background: #000; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
@@ -111,7 +110,7 @@
         <div id="debug-panel" class="debug-panel hidden">
             <span class="debug-title">Optický osciloskop (Co viděla kamera)</span>
             <div class="debug-timeline" id="debug-timeline"></div>
-            <div class="debug-stats" id="debug-stats">Dekódované bajty: [0] [0] [0]</div>
+            <div class="debug-stats" id="debug-stats">...</div>
         </div>
 
         <button id="start-cam-btn">Spustit skenování</button>
@@ -219,6 +218,7 @@
     });
 
     let streamActive = false;
+    let localStream = null;
     let appState = 'IDLE'; 
     let syncStartTime = 0;
     let recordStartTime = 0;
@@ -235,11 +235,11 @@
     startBtn.addEventListener('click', async () => {
         if (streamActive) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            localStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment', frameRate: { ideal: 30 } },
                 audio: false
             });
-            video.srcObject = stream;
+            video.srcObject = localStream;
             video.play();
             streamActive = true;
             
@@ -357,7 +357,7 @@
         }
     }
 
-    // CHYTRÁ AUTOMATIKA S ADAPTABILNÍM ČASOVÁNÍM (AUTO-BAUD)
+    // VOJENSKY PŘESNÝ DEKODÉR
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
@@ -376,7 +376,7 @@
         debugTimeline.innerHTML = htmlGraph;
         debugPanel.classList.remove('hidden');
 
-        // Filtrace hran
+        // Filtrace hran - odstraníme jedno-snímkové zákmity
         let edges = [];
         let currentState = collectedSamples[0].bit;
         for (let i = 0; i < collectedSamples.length - 2; i++) {
@@ -396,23 +396,12 @@
             return closest.bit;
         }
 
-        // --- AUTO-BAUD: Umělá inteligence na čtení rychlosti ---
-        // Najdeme první hranu, kdy se světlo rozsvítilo (začátek Start bitu)
-        let firstStartIdx = edges.findIndex(e => e.state === 1);
-        let realBitTime = 150; // Záchranná výchozí hodnota
-        
-        if (firstStartIdx !== -1 && (firstStartIdx + 1) < edges.length) {
-            // Změříme čas mezi rozsvícením a zhasnutím = rychlost tvé krabičky!
-            let measuredTime = edges[firstStartIdx + 1].time - edges[firstStartIdx].time;
-            if (measuredTime > 30 && measuredTime < 500) {
-                realBitTime = measuredTime; // Web se přizpůsobil
-            }
-        }
-
         let bytes = [];
         let searchStartTime = recordStartTime;
 
+        // TADY JE TA MAGIE: Nečekáme na "měření" rychlosti. Prostě VÍME, že bit má 150 ms.
         for (let b = 0; b < 3; b++) {
+            // Najdeme, kdy se rozsvítil první bit u tohoto konkrétního bajtu (Start bit)
             let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
             if (!startEdge) {
                 bytes.push(0);
@@ -422,20 +411,22 @@
             let byteStartTime = startEdge.time;
             let decodedByte = 0;
             
-            // Web skočí přesně doprostřed prvního datového bitu podle nové rychlosti
-            let readTime = byteStartTime + (realBitTime * 1.5); 
+            // Skočíme přesně doprostřed prvního skutečného datového bitu (150ms start + 75ms na půlku)
+            let readTime = byteStartTime + 225; 
             
             for (let i = 0; i < 8; i++) {
-                if (getBitAtTime(readTime) === 1) { decodedByte |= (1 << i); }
-                readTime += realBitTime; 
+                if (getBitAtTime(readTime) === 1) { 
+                    decodedByte |= (1 << i); 
+                }
+                readTime += 150; // Skáčeme exaktně o 150 ms dál
             }
             bytes.push(decodedByte);
             
-            // Přeskočíme Stop bit a čekáme na další Start bit
-            searchStartTime = readTime + (realBitTime * 0.5); 
+            // Pojistka: Čekáme na Stop bit (konec). Hledáme další Start bit až v zóně BEZPEČNĚ ZA tímto bajtem.
+            searchStartTime = byteStartTime + 1400; 
         }
 
-        debugStats.innerText = `Dekódováno: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}] (Rychlost čipu: ${realBitTime.toFixed(0)} ms/bit)`;
+        debugStats.innerText = `Dekódováno: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}] (Rychlost fixována na 150 ms)`;
 
         if (bytes[0] === 170) {
             beers = bytes[1];
