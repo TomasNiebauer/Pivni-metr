@@ -7,66 +7,35 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background-color: #121212;
-            color: #e0e0e0;
+            background-color: #121212; color: #e0e0e0; padding: 20px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
         }
         .container {
-            max-width: 450px;
-            width: 100%;
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            max-width: 450px; width: 100%; background: #1e1e1e;
+            padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
         h1 { text-align: center; color: #00e5ff; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 10px rgba(0,229,255,0.2); }
-        
         .hidden { display: none !important; }
 
         .camera-container {
-            position: relative;
-            width: 100%;
-            height: 250px;
-            background: #0d0d0d;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            border: 2px solid #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative; width: 100%; height: 250px; background: #0d0d0d;
+            border-radius: 12px; overflow: hidden; margin-bottom: 15px; border: 2px solid #333;
+            display: flex; align-items: center; justify-content: center;
         }
-        
         #webcam { display: none; width: 100%; height: 100%; object-fit: cover; }
         .target-box {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 35px;
-            height: 35px;
-            border: 3px dashed #00e5ff;
-            border-radius: 6px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
-            pointer-events: none;
-            transition: all 0.2s ease;
+            display: none; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 35px; height: 35px;
+            border: 3px dashed #00e5ff; border-radius: 6px; pointer-events: none;
         }
-
         .camera-placeholder { color: #555; font-size: 14px; font-weight: bold; }
 
         .signal-container {
             width: 100%; background: #222; border-radius: 6px; height: 25px;
             margin-bottom: 15px; overflow: hidden; border: 1px solid #333; position: relative;
         }
-        .signal-bar {
-            width: 0%; height: 100%; background: linear-gradient(90deg, #002244, #00e5ff);
-            transition: width 0.05s ease;
-        }
+        .signal-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #002244, #00e5ff); transition: width 0.05s ease; }
         .signal-text {
             position: absolute; width: 100%; text-align: center; font-size: 12px;
             font-weight: bold; line-height: 25px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
@@ -79,18 +48,12 @@
         .calibration-mode input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
         .calibration-mode label { font-size: 14px; color: #ccc; cursor: pointer; user-select: none; }
 
-        /* --- STYLY PRO DIAGNOSTICKÝ PANEL (OSCILOSKOP) --- */
-        .debug-panel {
-            background: #111; border: 1px solid #444; border-radius: 8px;
-            padding: 10px; margin-bottom: 15px; width: 100%;
-        }
+        /* OSCILOSKOP */
+        .debug-panel { background: #111; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
         .debug-title { font-size: 12px; color: #aaa; margin-bottom: 8px; display: block; text-align: center; }
-        .debug-timeline {
-            display: flex; width: 100%; height: 30px; background: #000;
-            border: 1px solid #555; border-radius: 4px; overflow: hidden;
-        }
-        .tl-1 { flex: 1; background: #00e5ff; height: 100%; } /* Světlo */
-        .tl-0 { flex: 1; background: #1a1a1a; height: 100%; } /* Tma */
+        .debug-timeline { display: flex; width: 100%; height: 30px; background: #000; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
+        .tl-1 { flex: 1; background: #00e5ff; height: 100%; }
+        .tl-0 { flex: 1; background: #1a1a1a; height: 100%; }
         .debug-stats { font-family: monospace; font-size: 11px; color: #00e5ff; margin-top: 8px; text-align: center; }
 
         .setup-form {
@@ -103,27 +66,22 @@
             border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px;
         }
 
-        .results {
-            background: #252525; padding: 15px; border-radius: 12px;
-            border-left: 4px solid #00e5ff; margin-bottom: 15px;
-        }
+        .results { background: #252525; padding: 15px; border-radius: 12px; border-left: 4px solid #00e5ff; margin-bottom: 15px; }
         .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
         .value { font-weight: bold; color: #fff; }
-        .promile-large {
-            text-align: center; font-size: 52px; font-weight: bold;
-            color: #fff; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
+        .promile-large { text-align: center; font-size: 52px; font-weight: bold; color: #fff; margin: 10px 0; }
 
-        .status-text {
-            text-align: center; font-size: 14px; color: #00e5ff;
-            font-weight: bold; min-height: 20px; margin-top: 10px;
-        }
-        
-        button {
-            width: 100%; background: #00e5ff; color: #000; border: none;
-            padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold;
-            cursor: pointer; transition: 0.2s;
-        }
+        .funny-stats { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        .funny-row { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #333; }
+        .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .funny-title { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
+        .funny-val { font-size: 15px; color: #00e5ff; font-weight: bold; }
+
+        .gif-container { width: 100%; text-align: center; }
+        .gif-container img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
+
+        .status-text { text-align: center; font-size: 14px; color: #00e5ff; font-weight: bold; min-height: 20px; margin-top: 10px; }
+        button { width: 100%; background: #00e5ff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #00b8cc; }
         #analyzer-canvas { display: none; }
     </style>
@@ -178,7 +136,7 @@
                 <select id="food">
                     <option value="1.0">Nic (Na lačno)</option>
                     <option value="0.9">Něco málo k zakousnutí</option>
-                    <option value="0.8">Střední jídlo (Běžná porce)</option>
+                    <option value="0.8">Střední jídlo</option>
                     <option value="0.7">Pořádná večeře</option>
                 </select>
             </div>
@@ -196,6 +154,26 @@
             <div class="promile-large" id="promile-val">0.00 ‰</div>
             <div class="status-text" id="fun-status" style="margin-top:0;">...</div>
         </div>
+
+        <div class="funny-stats">
+            <div class="funny-row">
+                <span class="funny-title">🚗 Za volant můžeš sednout:</span>
+                <span class="funny-val" id="drive-val">Počítám...</span>
+            </div>
+            <div class="funny-row">
+                <span class="funny-title">🚲 Na kolo to s odřenýma ušima půjde:</span>
+                <span class="funny-val" id="bike-val">Počítám...</span>
+            </div>
+            <div class="funny-row">
+                <span class="funny-title">💘 Kdy pozvat někoho na rande?</span>
+                <span class="funny-val" id="date-val">Počítám...</span>
+            </div>
+        </div>
+
+        <div class="gif-container">
+            <img id="reaction-gif" src="" alt="Vibe Check">
+        </div>
+
         <button id="scan-again-btn" style="margin-top: 20px; background: #333; color: #fff;">Skenovat znovu</button>
     </div>
 
@@ -289,7 +267,7 @@
 
     contactChk.addEventListener('change', () => {
         if (contactChk.checked && streamActive) {
-            debugPanel.classList.add('hidden'); // Schováme starý debug
+            debugPanel.classList.add('hidden'); 
             setTimeout(() => {
                 darkIntensity = getRawBlue();
                 appState = 'WAIT_LIGHT';
@@ -338,14 +316,14 @@
             calibrationSamples.push(currentBlue);
             let elapsedMs = Date.now() - syncStartTime;
             
-            statusText.innerText = `🔒 SYNC: Ostřím kameru... (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
+            statusText.innerText = `🔒 SYNC: NEHÝBEJ S TELEFONEM! (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
             signalText.innerText = `IGNORUJI VÝKYVY: ${currentBlue.toFixed(0)}`;
             
             if (elapsedMs >= 3500) {
                 appState = 'WAIT_DROP';
                 let recentSamples = calibrationSamples.slice(-30);
                 brightIntensity = recentSamples.reduce((a,b)=>a+b, 0) / recentSamples.length;
-                dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.4; // Snížený práh pro větší jistotu čtení světla
+                dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.4; 
                 statusText.innerText = "⚠️ PŘIPRAVENO: Čekám na zhasnutí LED...";
             }
         }
@@ -359,7 +337,7 @@
                 collectedSamples = [];
                 
                 targetBox.style.borderColor = "#ff9800";
-                statusText.innerText = "📥 TELEPORT: Čtu binární data (150ms bit)...";
+                statusText.innerText = "📥 TELEPORT: Čtu binární data (Drž telefon!)...";
                 setTimeout(decodeExactBinary, 5500);
             }
         }
@@ -379,6 +357,7 @@
         }
     }
 
+    // CHYTRÁ AUTOMATIKA S ADAPTABILNÍM ČASOVÁNÍM (AUTO-BAUD)
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
@@ -390,7 +369,6 @@
             return;
         }
 
-        // --- VYKRESLENÍ DIAGNOSTICKÉHO GRAFU (OSCILOSKOPU) ---
         let htmlGraph = "";
         collectedSamples.forEach(sample => {
             htmlGraph += `<div class="tl-${sample.bit}" title="Jas: ${sample.raw.toFixed(0)}"></div>`;
@@ -398,10 +376,9 @@
         debugTimeline.innerHTML = htmlGraph;
         debugPanel.classList.remove('hidden');
 
-        // --- DEKÓDOVÁNÍ (STEJNÉ JAKO PŘEDTÍM, S FILTREM HRAN) ---
+        // Filtrace hran
         let edges = [];
         let currentState = collectedSamples[0].bit;
-        
         for (let i = 0; i < collectedSamples.length - 2; i++) {
             let b0 = collectedSamples[i].bit;
             let b1 = collectedSamples[i+1].bit;
@@ -419,6 +396,19 @@
             return closest.bit;
         }
 
+        // --- AUTO-BAUD: Umělá inteligence na čtení rychlosti ---
+        // Najdeme první hranu, kdy se světlo rozsvítilo (začátek Start bitu)
+        let firstStartIdx = edges.findIndex(e => e.state === 1);
+        let realBitTime = 150; // Záchranná výchozí hodnota
+        
+        if (firstStartIdx !== -1 && (firstStartIdx + 1) < edges.length) {
+            // Změříme čas mezi rozsvícením a zhasnutím = rychlost tvé krabičky!
+            let measuredTime = edges[firstStartIdx + 1].time - edges[firstStartIdx].time;
+            if (measuredTime > 30 && measuredTime < 500) {
+                realBitTime = measuredTime; // Web se přizpůsobil
+            }
+        }
+
         let bytes = [];
         let searchStartTime = recordStartTime;
 
@@ -426,22 +416,26 @@
             let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
             if (!startEdge) {
                 bytes.push(0);
-                continue; // Pokusíme se pokračovat, i když selhal start bit (pro diagnostiku)
+                continue; 
             }
 
             let byteStartTime = startEdge.time;
             let decodedByte = 0;
-            let readTime = byteStartTime + 225; 
+            
+            // Web skočí přesně doprostřed prvního datového bitu podle nové rychlosti
+            let readTime = byteStartTime + (realBitTime * 1.5); 
             
             for (let i = 0; i < 8; i++) {
                 if (getBitAtTime(readTime) === 1) { decodedByte |= (1 << i); }
-                readTime += 150; 
+                readTime += realBitTime; 
             }
             bytes.push(decodedByte);
-            searchStartTime = readTime + 100; 
+            
+            // Přeskočíme Stop bit a čekáme na další Start bit
+            searchStartTime = readTime + (realBitTime * 0.5); 
         }
 
-        debugStats.innerText = `Dekódované bajty: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}]`;
+        debugStats.innerText = `Dekódováno: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}] (Rychlost čipu: ${realBitTime.toFixed(0)} ms/bit)`;
 
         if (bytes[0] === 170) {
             beers = bytes[1];
@@ -455,10 +449,18 @@
             
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba v signálu. Podívej se na graf výše.`;
+            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170).`;
             setTimeout(() => { if (streamActive && appState === 'IDLE') statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko..."; }, 3000);
         }
         collectedSamples = [];
+    }
+
+    function formatTime(hoursDec) {
+        if (hoursDec <= 0) return "Můžeš rovnou vyrazit!";
+        let h = Math.floor(hoursDec);
+        let m = Math.round((hoursDec - h) * 60);
+        if (h === 0) return `Za ${m} minut`;
+        return `Za ${h} h a ${m} min`;
     }
 
     function calculateAlcohol() {
@@ -473,11 +475,48 @@
 
         document.getElementById('promile-val').innerText = promile.toFixed(2) + " ‰";
         
-        let funStat = document.getElementById('fun-status');
-        if (promile === 0) funStat.innerText = "Jsi naprosto střízlivý.";
-        else if (promile < 0.5) funStat.innerText = "Veselý začátek...";
-        else if (promile < 1.2) funStat.innerText = "Ideální provozní teplota! 🚀";
-        else funStat.innerText = "Zpívej, dokud to jde! 🎤";
+        let gifUrl = "";
+        let dateText = "";
+
+        let timeToDrive = promile / 0.15;
+        let timeToBike = promile > 0.3 ? (promile - 0.3) / 0.15 : 0; 
+
+        document.getElementById('drive-val').innerText = formatTime(timeToDrive);
+        document.getElementById('bike-val').innerText = formatTime(timeToBike);
+
+        if (promile === 0) { 
+            document.getElementById('promile-val').style.color = "#fff"; 
+            funStatus.innerText = "Ty jsi to snad vybryndal, ne?";
+            gifUrl = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif"; 
+            dateText = "Běž na bar, seš moc střízlivej. Bude s tebou nuda.";
+        } 
+        else if (promile < 0.5) { 
+            document.getElementById('promile-val').style.color = "#4caf50"; 
+            funStatus.innerText = "Veselý začátek..."; 
+            gifUrl = "https://media.giphy.com/media/Zw3oBUuOlDJ3W/giphy.gif"; 
+            dateText = "Ještě jedno si dej, ať se ti rozváže jazyk.";
+        } 
+        else if (promile < 1.2) { 
+            document.getElementById('promile-val').style.color = "#00e5ff"; 
+            funStatus.innerText = "Ideální provozní teplota! 🚀"; 
+            gifUrl = "https://media.giphy.com/media/tsX3YHXWGpu3TxgdNE/giphy.gif"; 
+            dateText = "Hned teď! Jsi král parketu a mistr slova!";
+        } 
+        else if (promile < 2.0) { 
+            document.getElementById('promile-val').style.color = "#ff9800"; 
+            funStatus.innerText = "Zpívej, dokud to jde! 🎤"; 
+            gifUrl = "https://media.giphy.com/media/ggcNOq2AlO40g/giphy.gif"; 
+            dateText = "Už se radši nikoho na nic neptej. Fakt ne.";
+        } 
+        else { 
+            document.getElementById('promile-val').style.color = "#f44336"; 
+            funStatus.innerText = "Game Over. 💀"; 
+            gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; 
+            dateText = "Leda že by se jí líbilo tvoje chrápání. Jdi spát.";
+        }
+
+        document.getElementById('date-val').innerText = dateText;
+        document.getElementById('reaction-gif').src = gifUrl;
     }
 </script>
 </body>
