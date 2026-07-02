@@ -77,7 +77,6 @@
             text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         }
 
-        /* Styl pro nový kalibrační režim */
         .calibration-mode {
             background: #252525;
             padding: 12px;
@@ -99,6 +98,9 @@
             cursor: pointer;
             user-select: none;
         }
+
+        /* Třída pro skrytí elementů do doby, než přijdou data */
+        .hidden { display: none !important; }
 
         .setup-form {
             display: grid;
@@ -146,6 +148,7 @@
             color: #00e5ff;
             font-weight: bold;
             min-height: 20px;
+            margin-top: 10px;
         }
         
         button {
@@ -177,43 +180,47 @@
         <div class="signal-text" id="signal-text">SIGNÁL LED: 0%</div>
     </div>
 
-    <div class="calibration-mode">
+    <div class="calibration-mode" id="calib-container">
         <input type="checkbox" id="close-contact-chk">
         <label for="close-contact-chk">Přiloženo těsně (Kalibrovat tmu)</label>
     </div>
 
-    <div class="setup-form">
-        <div>
-            <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
-            <select id="gender">
-                <option value="0.7">Muž</option>
-                <option value="0.6">Žena</option>
-            </select>
-        </div>
-        <div>
-            <span style="font-size: 12px; color: #aaa;">Váha (kg)</span>
-            <input type="number" id="weight" value="77" min="40" max="200">
-        </div>
-    </div>
-
-    <div class="results">
-        <div class="result-row">
-            <span>Počet piv (11° / 0.5l):</span>
-            <span class="value" id="beer-count-val">0 ks</span>
-        </div>
-        <div class="result-row">
-            <span>Doba od 1. loku:</span>
-            <span class="value" id="time-val">0 min</span>
-        </div>
-        <div class="promile-large" id="promile-val">0.00 ‰</div>
-        <div class="status-text" id="status-text">Kamera vypnuta</div>
-    </div>
-
     <button id="start-cam-btn">Spustit skenování</button>
+
+    <div id="data-panel" class="hidden">
+        <div class="setup-form">
+            <div>
+                <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
+                <select id="gender">
+                    <option value="0.7">Muž</option>
+                    <option value="0.6">Žena</option>
+                </select>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: #aaa;">Váha (kg)</span>
+                <input type="number" id="weight" value="77" min="40" max="200">
+            </div>
+        </div>
+
+        <div class="results">
+            <div class="result-row">
+                <span>Počet piv (11° / 0.5l):</span>
+                <span class="value" id="beer-count-val">0 ks</span>
+            </div>
+            <div class="result-row">
+                <span>Doba od 1. loku:</span>
+                <span class="value" id="time-val">0 min</span>
+            </div>
+            <div class="promile-large" id="promile-val">0.00 ‰</div>
+        </div>
+    </div>
+
+    <div class="status-text" id="status-text">Kamera vypnuta</div>
+
     <canvas id="analyzer-canvas" width="30" height="30"></canvas>
 </div>
 
-<script {
+<script>
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('analyzer-canvas');
     const ctx = canvas.getContext('2d');
@@ -223,9 +230,14 @@
     const signalText = document.getElementById('signal-text');
     const targetBox = document.getElementById('target-box');
     const contactChk = document.getElementById('close-contact-chk');
+    const dataPanel = document.getElementById('data-panel');
 
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
+    
+    // Automatický přepočet při změně váhy/pohlaví po načtení dat
+    document.getElementById('weight').addEventListener('input', (e) => { localStorage.setItem('alko_weight', e.target.value); calculateAlcohol(); });
+    document.getElementById('gender').addEventListener('change', (e) => { localStorage.setItem('alko_gender', e.target.value); calculateAlcohol(); });
 
     let streamActive = false;
     let isCalibrating = false;
@@ -253,7 +265,6 @@
             startBtn.style.display = 'none';
             statusText.innerText = "Zamiř modrou LED na terč...";
             
-            // Základní načtení tmy
             setTimeout(() => { if(!contactChk.checked) darkIntensity = getRawBlue(); }, 1000);
             runMainLoop();
         } catch (err) {
@@ -261,10 +272,8 @@
         }
     });
 
-    // Reakce na zaškrtnutí: uživatel přiložil LEDku na čočku, okamžitě zkalibrujeme absolutní tmu
     contactChk.addEventListener('change', () => {
         if(contactChk.checked && streamActive) {
-            // Nasbíráme vzorek tmy pod přiloženou krabičkou
             setTimeout(() => {
                 darkIntensity = getRawBlue();
                 statusText.innerText = `🌑 Tma zkalibrována (${darkIntensity.toFixed(0)}). Spusť přenos!`;
@@ -281,8 +290,8 @@
         let totalRedGreen = 0;
 
         for (let i = 0; i < imgData.data.length; i += 4) {
-            totalBlue += imgData.data[i+2]; // Modrá
-            totalRedGreen += (imgData.data[i] + imgData.data[i+1]) / 2; // Červená + Zelená
+            totalBlue += imgData.data[i+2]; 
+            totalRedGreen += (imgData.data[i] + imgData.data[i+1]) / 2; 
         }
         let diff = (totalBlue / 900) - (totalRedGreen / 900);
         return diff > 0 ? diff : 0;
@@ -292,15 +301,11 @@
         if (!streamActive) return;
 
         let currentBlue = getRawBlue();
-        
-        // Dynamické škálování pro bar (pokud je přiloženo, upřednostníme absolutní hodnotu)
         let displayPercent = Math.min(Math.round((currentBlue / 140) * 100), 100);
         signalBar.style.width = displayPercent + "%";
         signalText.innerText = `SIGNÁL LED: ${displayPercent}% (Hodnota: ${currentBlue.toFixed(0)} / Tma: ${darkIntensity.toFixed(0)})`;
 
-        // 1. KROK: Zachycení začátku 4vteřinového trvalého svícení
         if (!isCalibrating && !isRecordingData) {
-            // Pokud jas vyskočí o jasný krok nad zkalibrovanou tmu
             if (currentBlue > (darkIntensity + 15)) {
                 isCalibrating = true;
                 calibrationSamples = [];
@@ -310,33 +315,27 @@
             }
         }
 
-        // 2. KROK: Sběr dat svítící LED a čekání na první zhasnutí (START přenosu)
         if (isCalibrating && !isRecordingData) {
             calibrationSamples.push(currentBlue);
-            
             let avgCal = calibrationSamples.reduce((a,b)=>a+b, 0) / calibrationSamples.length;
             
-            // Detekce hrany dolů = LEDka po 4 vteřinách zhasla, jdeme nahrávat data!
             if (calibrationSamples.length > 10 && currentBlue < (avgCal * 0.7)) {
                 isCalibrating = false;
                 isRecordingData = true;
                 
                 brightIntensity = avgCal;
-                // Matematicky neprůstřelný středový schod
                 dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.5;
                 
                 targetBox.style.borderColor = "#ff9800";
                 statusText.innerText = "📥 TELEPORT: Sosám data z paměti čipu...";
                 
                 collectedSamples = [];
-                // Vzorkujeme bity každých 100 ms
                 sampleInterval = setInterval(() => {
                     let sampleBlue = getRawBlue();
                     let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
                     collectedSamples.push(bit);
                 }, 100);
 
-                // Necháme nahrávat 3,8 vteřiny
                 setTimeout(decodeSlowOpticalData, 3800);
             }
         }
@@ -349,9 +348,8 @@
         isRecordingData = false;
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
-        contactChk.checked = false; // Vynulujeme checkbox pro další použití
+        contactChk.checked = false; 
 
-        // Spořádáme zachycené pulzy (změny hran)
         let edges = 0;
         for (let i = 1; i < collectedSamples.length; i++) {
             if (collectedSamples[i] !== collectedSamples[i-1]) {
@@ -359,28 +357,31 @@
             }
         }
 
-        // --- PŘESNÁ REKONSTRUKCE PODLE POČTU HRAN ---
-        // ATtiny posílá: Start bit (2 hrany), Bajt startu (cca 4-8 hran), Počet piv, Uplynulý čas, Stop bit (2 hrany)
         if (edges >= 6) {
-            // Každé jedno pivo navíc přidá do výsledného streamu průměrně 4 logické hrany (bliky) při odesílání bajtu.
-            // Odrážíme matematickou úměru pulsů:
             beers = Math.round((edges - 4) / 4); 
             if (beers < 1) beers = 1;
-            if (beers > 40) beers = 2; // Ochrana proti haluzím
+            if (beers > 40) beers = 2; 
             
             minutes = Math.round(edges * 3.5);
 
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
             statusText.innerText = "Teleport úspěšný! Data sedí. 🍻";
+            
+            // TADY JE TA MAGIE: Jakmile máme data, zobrazíme panel!
+            dataPanel.classList.remove('hidden');
+            
             calculateAlcohol();
         } else {
             statusText.innerText = `Chyba přenosu (Příliš slabý kmit, jen ${edges} změn). Zkus to znovu.`;
+            dataPanel.classList.add('hidden'); // Skryje panel, pokud byl dříve otevřen a teď nastala chyba
         }
 
         setTimeout(() => {
             collectedSamples = [];
-            if (streamActive) statusText.innerText = "Zamiř a zaškrtni políčko...";
+            if (streamActive && edges < 6) {
+                statusText.innerText = "Zamiř a zaškrtni políčko...";
+            }
         }, 4000);
     }
 
