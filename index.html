@@ -51,7 +51,7 @@
         .debug-panel { background: #111; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
         .debug-title { font-size: 12px; color: #aaa; margin-bottom: 8px; display: block; text-align: center; }
         .debug-timeline { display: flex; width: 100%; height: 30px; background: #000; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
-        .tl-1 { flex: 1; background: #00e5ff; height: 100%; }
+        .tl-1 { flex: 1; background: #00e5ff; height: 100%; border-right: 1px solid #005f6b; }
         .tl-0 { flex: 1; background: #1a1a1a; height: 100%; }
         .debug-stats { font-family: monospace; font-size: 11px; color: #00e5ff; margin-top: 8px; text-align: center; }
 
@@ -108,7 +108,7 @@
         </div>
 
         <div id="debug-panel" class="debug-panel hidden">
-            <span class="debug-title">Optický osciloskop (Co viděla kamera)</span>
+            <span class="debug-title">Osciloskop PWM (Délky pulzů)</span>
             <div class="debug-timeline" id="debug-timeline"></div>
             <div class="debug-stats" id="debug-stats">...</div>
         </div>
@@ -221,7 +221,6 @@
     let localStream = null;
     let appState = 'IDLE'; 
     let syncStartTime = 0;
-    let recordStartTime = 0;
     
     let collectedSamples = [];
     let beers = 0;
@@ -271,7 +270,7 @@
             setTimeout(() => {
                 darkIntensity = getRawBlue();
                 appState = 'WAIT_LIGHT';
-                statusText.innerText = "🌑 Tma uložena. Zapni sekvenci na krabičce...";
+                statusText.innerText = "🌑 Tma uložena. Zapni 5s sekvenci na krabičce...";
                 targetBox.style.borderColor = "#00e5ff";
             }, 300);
         } else {
@@ -316,7 +315,7 @@
             calibrationSamples.push(currentBlue);
             let elapsedMs = Date.now() - syncStartTime;
             
-            statusText.innerText = `🔒 SYNC: NEHÝBEJ S TELEFONEM! (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
+            statusText.innerText = `🔒 SYNC: Zklidňuji foťák... (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
             signalText.innerText = `IGNORUJI VÝKYVY: ${currentBlue.toFixed(0)}`;
             
             if (elapsedMs >= 3500) {
@@ -333,16 +332,16 @@
             
             if (currentBlue < dynamicThreshold) {
                 appState = 'RECORD_DATA';
-                recordStartTime = Date.now(); 
                 collectedSamples = [];
-                
                 targetBox.style.borderColor = "#ff9800";
-                statusText.innerText = "📥 TELEPORT: Čtu binární data (Drž telefon!)...";
-                setTimeout(decodeExactBinary, 5500);
+                
+                // Měříme 9 vteřin (Délka PWM přenosu)
+                statusText.innerText = "📥 TELEPORT: Čtu šířku pulzů (Nepouštěj to!)";
+                setTimeout(decodePWM, 9000);
             }
         }
         else if (appState === 'RECORD_DATA') {
-            signalText.innerText = `ČTU BINÁRNÍ KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
+            signalText.innerText = `ČTU PWM KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
             collectedSamples.push({
                 time: Date.now(),
                 raw: currentBlue,
@@ -357,8 +356,8 @@
         }
     }
 
-    // VOJENSKY PŘESNÝ DEKODÉR
-    function decodeExactBinary() {
+    // NEPRŮSTŘELNÝ PWM DEKODÉR (Televizní ovladač mód)
+    function decodePWM() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
@@ -369,6 +368,24 @@
             return;
         }
 
+        // 1. Zredukujeme data na samotné pulzy a změříme jejich délku v ms
+        let pulses = [];
+        let currentState = collectedSamples[0].bit;
+        let startTime = collectedSamples[0].time;
+        
+        for (let i = 1; i < collectedSamples.length; i++) {
+            if (collectedSamples[i].bit !== currentState) {
+                let duration = collectedSamples[i].time - startTime;
+                if (duration > 30) { // Ignorujeme mikrošum pod 30ms
+                    pulses.push({ state: currentState, duration: duration });
+                }
+                currentState = collectedSamples[i].bit;
+                startTime = collectedSamples[i].time;
+            }
+        }
+        pulses.push({ state: currentState, duration: Date.now() - startTime });
+
+        // Grafické zobrazení na osciloskopu
         let htmlGraph = "";
         collectedSamples.forEach(sample => {
             htmlGraph += `<div class="tl-${sample.bit}" title="Jas: ${sample.raw.toFixed(0)}"></div>`;
@@ -376,58 +393,49 @@
         debugTimeline.innerHTML = htmlGraph;
         debugPanel.classList.remove('hidden');
 
-        // Filtrace hran - odstraníme jedno-snímkové zákmity
-        let edges = [];
-        let currentState = collectedSamples[0].bit;
-        for (let i = 0; i < collectedSamples.length - 2; i++) {
-            let b0 = collectedSamples[i].bit;
-            let b1 = collectedSamples[i+1].bit;
-            let b2 = collectedSamples[i+2].bit;
-            if (b0 === b1 && b1 === b2 && b0 !== currentState) {
-                currentState = b0;
-                edges.push({ time: collectedSamples[i].time, state: currentState });
-            }
+        // 2. Najdeme velký START pulz (Musí svítit déle než 350ms)
+        let startIdx = pulses.findIndex(p => p.state === 1 && p.duration >= 350);
+        
+        if (startIdx === -1) {
+            statusText.innerText = `Chyba signálu. Nenašel jsem START pulz. Foťák možná oslepl.`;
+            debugStats.innerText = `Počet nalezených pulzů: ${pulses.length}`;
+            return;
         }
 
-        function getBitAtTime(targetTime) {
-            let closest = collectedSamples.reduce((a, b) => {
-                return Math.abs(b.time - targetTime) < Math.abs(a.time - targetTime) ? b : a;
-            });
-            return closest.bit;
-        }
-
-        let bytes = [];
-        let searchStartTime = recordStartTime;
-
-        // TADY JE TA MAGIE: Nečekáme na "měření" rychlosti. Prostě VÍME, že bit má 150 ms.
-        for (let b = 0; b < 3; b++) {
-            // Najdeme, kdy se rozsvítil první bit u tohoto konkrétního bajtu (Start bit)
-            let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
-            if (!startEdge) {
-                bytes.push(0);
-                continue; 
-            }
-
-            let byteStartTime = startEdge.time;
-            let decodedByte = 0;
-            
-            // Skočíme přesně doprostřed prvního skutečného datového bitu (150ms start + 75ms na půlku)
-            let readTime = byteStartTime + 225; 
-            
-            for (let i = 0; i < 8; i++) {
-                if (getBitAtTime(readTime) === 1) { 
-                    decodedByte |= (1 << i); 
+        // 3. Extrakce bitů podle délky svícení (šířky pulzu)
+        let bits = [];
+        for (let i = startIdx + 1; i < pulses.length; i++) {
+            if (pulses[i].state === 1) { // Měříme jen světlo
+                if (pulses[i].duration >= 40 && pulses[i].duration <= 170) {
+                    bits.push(0); // Krátký pulz = 0
+                } else if (pulses[i].duration > 170 && pulses[i].duration < 400) {
+                    bits.push(1); // Dlouhý pulz = 1
                 }
-                readTime += 150; // Skáčeme exaktně o 150 ms dál
             }
-            bytes.push(decodedByte);
-            
-            // Pojistka: Čekáme na Stop bit (konec). Hledáme další Start bit až v zóně BEZPEČNĚ ZA tímto bajtem.
-            searchStartTime = byteStartTime + 1400; 
         }
 
-        debugStats.innerText = `Dekódováno: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}] (Rychlost fixována na 150 ms)`;
+        debugStats.innerText = `Nalezeno ${bits.length} bitů. Počet bloků světla: ${pulses.filter(p=>p.state===1).length}`;
 
+        // Potřebujeme přečíst aspoň 24 bitů (3 bajty)
+        if (bits.length < 24) {
+            statusText.innerText = `Chyba. Přečetl jsem jen ${bits.length} bitů z 24. Pohnuls telefonem.`;
+            return;
+        }
+
+        // 4. Rekonstrukce bajtů odzadu dopředu (LSB first)
+        let bytes = [0, 0, 0];
+        for (let b = 0; b < 3; b++) {
+            for (let i = 0; i < 8; i++) {
+                let bitIndex = (b * 8) + i;
+                if (bits[bitIndex] === 1) {
+                    bytes[b] |= (1 << i);
+                }
+            }
+        }
+
+        debugStats.innerText += ` | Výsledek: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}]`;
+
+        // 5. Validace a zobrazení
         if (bytes[0] === 170) {
             beers = bytes[1];
             minutes = bytes[2];
@@ -477,31 +485,31 @@
 
         if (promile === 0) { 
             document.getElementById('promile-val').style.color = "#fff"; 
-            funStatus.innerText = "Ty jsi to snad vybryndal, ne?";
+            document.getElementById('fun-status').innerText = "Ty jsi to snad vybryndal, ne?";
             gifUrl = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif"; 
             dateText = "Běž na bar, seš moc střízlivej. Bude s tebou nuda.";
         } 
         else if (promile < 0.5) { 
             document.getElementById('promile-val').style.color = "#4caf50"; 
-            funStatus.innerText = "Veselý začátek..."; 
+            document.getElementById('fun-status').innerText = "Veselý začátek..."; 
             gifUrl = "https://media.giphy.com/media/Zw3oBUuOlDJ3W/giphy.gif"; 
             dateText = "Ještě jedno si dej, ať se ti rozváže jazyk.";
         } 
         else if (promile < 1.2) { 
             document.getElementById('promile-val').style.color = "#00e5ff"; 
-            funStatus.innerText = "Ideální provozní teplota! 🚀"; 
+            document.getElementById('fun-status').innerText = "Ideální provozní teplota! 🚀"; 
             gifUrl = "https://media.giphy.com/media/tsX3YHXWGpu3TxgdNE/giphy.gif"; 
             dateText = "Hned teď! Jsi král parketu a mistr slova!";
         } 
         else if (promile < 2.0) { 
             document.getElementById('promile-val').style.color = "#ff9800"; 
-            funStatus.innerText = "Zpívej, dokud to jde! 🎤"; 
+            document.getElementById('fun-status').innerText = "Zpívej, dokud to jde! 🎤"; 
             gifUrl = "https://media.giphy.com/media/ggcNOq2AlO40g/giphy.gif"; 
             dateText = "Už se radši nikoho na nic neptej. Fakt ne.";
         } 
         else { 
             document.getElementById('promile-val').style.color = "#f44336"; 
-            funStatus.innerText = "Game Over. 💀"; 
+            document.getElementById('fun-status').innerText = "Game Over. 💀"; 
             gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; 
             dateText = "Leda že by se jí líbilo tvoje chrápání. Jdi spát.";
         }
