@@ -27,7 +27,6 @@
         
         .hidden { display: none !important; }
 
-        /* SKENOVACÍ OBRAZOVKA */
         .camera-container {
             position: relative;
             width: 100%;
@@ -42,7 +41,6 @@
             justify-content: center;
         }
         
-        /* Video a terč zpočátku schované, ukážou se až po startu */
         #webcam { display: none; width: 100%; height: 100%; object-fit: cover; }
         .target-box {
             display: none;
@@ -59,11 +57,7 @@
             transition: all 0.2s ease;
         }
 
-        .camera-placeholder {
-            color: #555;
-            font-size: 14px;
-            font-weight: bold;
-        }
+        .camera-placeholder { color: #555; font-size: 14px; font-weight: bold; }
 
         .signal-container {
             width: 100%;
@@ -76,63 +70,34 @@
             position: relative;
         }
         .signal-bar {
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, #002244, #00e5ff);
+            width: 0%; height: 100%; background: linear-gradient(90deg, #002244, #00e5ff);
             transition: width 0.05s ease;
         }
         .signal-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            line-height: 25px;
-            color: #fff;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            position: absolute; width: 100%; text-align: center; font-size: 12px;
+            font-weight: bold; line-height: 25px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         }
 
         .calibration-mode {
-            background: #252525;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid #333;
+            background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 15px;
+            display: flex; align-items: center; gap: 10px; border: 1px solid #333;
         }
         .calibration-mode input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
         .calibration-mode label { font-size: 14px; color: #ccc; cursor: pointer; user-select: none; }
 
-        /* VÝSLEDKOVÁ OBRAZOVKA */
         .setup-form {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a;
+            padding: 15px; border-radius: 12px; margin-bottom: 15px;
         }
         .full-width { grid-column: span 2; }
         select, input {
-            background: #1e1e1e;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 16px;
-            width: 100%;
-            margin-top: 5px;
+            background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px;
+            border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px;
         }
 
         .results {
-            background: #252525;
-            padding: 15px;
-            border-radius: 12px;
-            border-left: 4px solid #00e5ff;
-            margin-bottom: 15px;
+            background: #252525; padding: 15px; border-radius: 12px;
+            border-left: 4px solid #00e5ff; margin-bottom: 15px;
         }
         .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
         .value { font-weight: bold; color: #fff; }
@@ -141,19 +106,11 @@
             color: #fff; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
-        /* Sekce vtipných statistik */
         .funny-stats {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid #333;
+            background: #1a1a1a; border-radius: 12px; padding: 15px;
+            margin-bottom: 15px; border: 1px solid #333;
         }
-        .funny-row {
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px dashed #333;
-        }
+        .funny-row { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #333; }
         .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .funny-title { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
         .funny-val { font-size: 15px; color: #00e5ff; font-weight: bold; }
@@ -205,7 +162,6 @@
     </div>
 
     <div id="results-view" class="hidden">
-        
         <div class="setup-form">
             <div>
                 <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
@@ -272,7 +228,6 @@
     const canvas = document.getElementById('analyzer-canvas');
     const ctx = canvas.getContext('2d');
     
-    // UI Elementy
     const scannerView = document.getElementById('scanner-view');
     const resultsView = document.getElementById('results-view');
     const placeholder = document.getElementById('camera-placeholder');
@@ -286,12 +241,10 @@
     const signalText = document.getElementById('signal-text');
     const contactChk = document.getElementById('close-contact-chk');
 
-    // Formulář a paměť
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
     document.getElementById('food').value = localStorage.getItem('alko_food') || 1.0;
     
-    // Přepočet alkoholu při jakékoliv změně formuláře
     const inputs = ['weight', 'gender', 'food'];
     inputs.forEach(id => {
         document.getElementById(id).addEventListener('change', (e) => {
@@ -321,7 +274,6 @@
     let dynamicThreshold = 30;
     let calibrationSamples = [];
 
-    // Tlačítko START
     startBtn.addEventListener('click', async () => {
         if (streamActive) return;
         try {
@@ -333,7 +285,6 @@
             video.play();
             streamActive = true;
             
-            // Odkryjeme video a zaměřovač
             startBtn.style.display = 'none';
             placeholder.style.display = 'none';
             video.style.display = 'block';
@@ -347,7 +298,6 @@
         }
     });
 
-    // Tlačítko SKENOVAT ZNOVU
     scanAgainBtn.addEventListener('click', () => {
         resultsView.classList.add('hidden');
         scannerView.classList.remove('hidden');
@@ -441,63 +391,90 @@
 
         signalBar.style.width = displayPercent + "%";
         
-        // Zastavení smyčky pokud přepneme na výsledky
         if (!scannerView.classList.contains('hidden')) {
             requestAnimationFrame(runMainLoop);
         }
     }
 
+    // NOVÝ, SYNCHRONIZOVANÝ DEKODÉR
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
         contactChk.checked = false; 
 
-        if (collectedSamples.length === 0) return;
+        if (collectedSamples.length < 20) {
+            statusText.innerText = "Chyba: Záznam dat je příliš krátký.";
+            return;
+        }
 
-        function getBitAtOffset(msOffset) {
-            let targetTime = recordStartTime + msOffset;
+        // Vytáhneme jen hrany (okamžiky, kdy se změnilo světlo)
+        let edges = [];
+        let currentState = collectedSamples[0].bit;
+        for (let i = 1; i < collectedSamples.length; i++) {
+            if (collectedSamples[i].bit !== currentState) {
+                currentState = collectedSamples[i].bit;
+                edges.push({ time: collectedSamples[i].time, state: currentState });
+            }
+        }
+
+        function getBitAtTime(targetTime) {
             let closest = collectedSamples.reduce((a, b) => {
                 return Math.abs(b.time - targetTime) < Math.abs(a.time - targetTime) ? b : a;
             });
             return closest.bit;
         }
 
-        let byte1 = 0, byte2 = 0, byte3 = 0;
-        let offset = 450 + 75; 
+        let bytes = [];
+        let searchStartTime = recordStartTime;
 
-        let start1 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte1 |= (1 << i); offset += 150; }
-        let stop1 = getBitAtOffset(offset); offset += 150;
+        // Čteme přesně 3 bajty - s dynamickou synchronizací na každý Start bit
+        for (let b = 0; b < 3; b++) {
+            // Najdeme první rozsvícení (Start bit) v aktuálním okně
+            let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
+            
+            if (!startEdge) {
+                statusText.innerText = `Chyba signálu. Časování čipu "uplavalo" a nenašel jsem Start bit u bajtu ${b+1}.`;
+                return;
+            }
 
-        let start2 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte2 |= (1 << i); offset += 150; }
-        let stop2 = getBitAtOffset(offset); offset += 150;
+            let byteStartTime = startEdge.time;
+            let decodedByte = 0;
 
-        let start3 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte3 |= (1 << i); offset += 150; }
-        let stop3 = getBitAtOffset(offset); 
+            // Skok do poloviny prvního datového bitu: 150ms (Start bit) + 75ms (půlka datového bitu 0)
+            let readTime = byteStartTime + 225;
+            
+            for (let i = 0; i < 8; i++) {
+                if (getBitAtTime(readTime) === 1) {
+                    decodedByte |= (1 << i);
+                }
+                readTime += 150; // Skok na další bit
+            }
+            
+            bytes.push(decodedByte);
+            
+            // Posuneme se o kousek dál, abychom bezpečně přeskočili Stop bit a hledali další Start
+            searchStartTime = readTime + 100; 
+        }
 
-        if (start1 === 1 && stop1 === 0 && start2 === 1 && stop2 === 0 && byte1 === 170) {
-            beers = byte2;
-            minutes = byte3;
+        if (bytes[0] === 170) {
+            beers = bytes[1];
+            minutes = bytes[2];
 
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
             
-            // MAGIE: Skryjeme kameru a ukážeme výsledky!
             scannerView.classList.add('hidden');
             resultsView.classList.remove('hidden');
             
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba v signálu. Zkus to znovu.`;
+            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170).`;
             setTimeout(() => { if (streamActive && appState === 'IDLE') statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko..."; }, 3000);
         }
         collectedSamples = [];
     }
 
-    // Pomocná funkce pro lidský výpis času
     function formatTime(hoursDec) {
         if (hoursDec <= 0) return "Můžeš rovnou vyrazit!";
         let h = Math.floor(hoursDec);
@@ -513,55 +490,50 @@
         
         if (!weight || beers === 0) return;
 
-        // Vliv jídla: Sníží efektivní gramy alkoholu absorbované do krve
         const alcoholGrams = beers * 20 * foodFactor; 
         let promile = (alcoholGrams / (weight * r)) - (0.15 * (minutes / 60));
         if (promile < 0) promile = 0;
 
-        // Formátování hlavního promile
         document.getElementById('promile-val').innerText = promile.toFixed(2) + " ‰";
         const promileDiv = document.getElementById('promile-val');
         
-        // Zábavné texty a Gify!
         let gifUrl = "";
         let dateText = "";
 
-        // Odbourávání probíhá rychlostí cca 0.15 ‰ za hodinu
         let timeToDrive = promile / 0.15;
-        let timeToBike = promile > 0.3 ? (promile - 0.3) / 0.15 : 0; // Kolo bezpečně do 0.3‰
+        let timeToBike = promile > 0.3 ? (promile - 0.3) / 0.15 : 0; 
 
         document.getElementById('drive-val').innerText = formatTime(timeToDrive);
         document.getElementById('bike-val').innerText = formatTime(timeToBike);
 
-        // Hladinka vyhodnocení
         if (promile === 0) { 
             promileDiv.style.color = "#fff"; 
             funStatus.innerText = "Ty jsi to snad vybryndal, ne?";
-            gifUrl = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif"; // Bored
+            gifUrl = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif"; 
             dateText = "Běž na bar, seš moc střízlivej. Bude s tebou nuda.";
         } 
         else if (promile < 0.5) { 
             promileDiv.style.color = "#4caf50"; 
             funStatus.innerText = "Veselý začátek..."; 
-            gifUrl = "https://media.giphy.com/media/Zw3oBUuOlDJ3W/giphy.gif"; // Cheers Leonardo
+            gifUrl = "https://media.giphy.com/media/Zw3oBUuOlDJ3W/giphy.gif"; 
             dateText = "Ještě jedno si dej, ať se ti rozváže jazyk.";
         } 
         else if (promile < 1.2) { 
             promileDiv.style.color = "#00e5ff"; 
             funStatus.innerText = "Ideální provozní teplota! 🚀"; 
-            gifUrl = "https://media.giphy.com/media/tsX3YHXWGpu3TxgdNE/giphy.gif"; // Smooth Casanova
+            gifUrl = "https://media.giphy.com/media/tsX3YHXWGpu3TxgdNE/giphy.gif"; 
             dateText = "Hned teď! Jsi král parketu a mistr slova!";
         } 
         else if (promile < 2.0) { 
             promileDiv.style.color = "#ff9800"; 
             funStatus.innerText = "Zpívej, dokud to jde! 🎤"; 
-            gifUrl = "https://media.giphy.com/media/ggcNOq2AlO40g/giphy.gif"; // Funny drunk dancing
+            gifUrl = "https://media.giphy.com/media/ggcNOq2AlO40g/giphy.gif"; 
             dateText = "Už se radši nikoho na nic neptej. Fakt ne.";
         } 
         else { 
             promileDiv.style.color = "#f44336"; 
             funStatus.innerText = "Game Over. 💀"; 
-            gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; // Wasted
+            gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; 
             dateText = "Leda že by se jí líbilo tvoje chrápání. Jdi spát.";
         }
 
