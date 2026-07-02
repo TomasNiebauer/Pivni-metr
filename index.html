@@ -70,45 +70,80 @@
             position: relative;
         }
         .signal-bar {
-            width: 0%; height: 100%; background: linear-gradient(90deg, #002244, #00e5ff);
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #002244, #00e5ff);
             transition: width 0.05s ease;
         }
         .signal-text {
-            position: absolute; width: 100%; text-align: center; font-size: 12px;
-            font-weight: bold; line-height: 25px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 25px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         }
 
         .calibration-mode {
-            background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 15px;
-            display: flex; align-items: center; gap: 10px; border: 1px solid #333;
+            background: #252525;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #333;
         }
         .calibration-mode input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
         .calibration-mode label { font-size: 14px; color: #ccc; cursor: pointer; user-select: none; }
 
         .setup-form {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a;
-            padding: 15px; border-radius: 12px; margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
         }
         .full-width { grid-column: span 2; }
         select, input {
-            background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px;
-            border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px;
+            background: #1e1e1e;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 5px;
         }
 
         .results {
-            background: #252525; padding: 15px; border-radius: 12px;
-            border-left: 4px solid #00e5ff; margin-bottom: 15px;
+            background: #252525;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #00e5ff;
+            margin-bottom: 15px;
         }
         .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
         .value { font-weight: bold; color: #fff; }
         .promile-large {
-            text-align: center; font-size: 52px; font-weight: bold;
-            color: #fff; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            text-align: center;
+            font-size: 46px;
+            font-weight: bold;
+            color: #fff;
+            margin: 10px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
         .funny-stats {
-            background: #1a1a1a; border-radius: 12px; padding: 15px;
-            margin-bottom: 15px; border: 1px solid #333;
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
         }
         .funny-row { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #333; }
         .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -122,8 +157,12 @@
         }
 
         .status-text {
-            text-align: center; font-size: 14px; color: #00e5ff;
-            font-weight: bold; min-height: 20px; margin-top: 10px;
+            text-align: center;
+            font-size: 14px;
+            color: #00e5ff;
+            font-weight: bold;
+            min-height: 20px;
+            margin-top: 10px;
         }
         
         button {
@@ -377,7 +416,7 @@
                 collectedSamples = [];
                 
                 targetBox.style.borderColor = "#ff9800";
-                statusText.innerText = "📥 TELEPORT: Čtu binární data (150ms bit)...";
+                statusText.innerText = "📥 TELEPORT: Zhasnuto! Sosám data z blikání...";
                 setTimeout(decodeExactBinary, 5500);
             }
         }
@@ -396,7 +435,7 @@
         }
     }
 
-    // NOVÝ, SYNCHRONIZOVANÝ DEKODÉR
+    // VYHLAZENÝ A NEPRŮSTŘELNÝ BINÁRNÍ DEKODÉR
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
@@ -408,12 +447,18 @@
             return;
         }
 
-        // Vytáhneme jen hrany (okamžiky, kdy se změnilo světlo)
+        // --- FILTROVANÁ DETEKCE HRAN (ANTI-ŠUM / DEBOUNCING) ---
         let edges = [];
         let currentState = collectedSamples[0].bit;
-        for (let i = 1; i < collectedSamples.length; i++) {
-            if (collectedSamples[i].bit !== currentState) {
-                currentState = collectedSamples[i].bit;
+        
+        // Změna bitu se zapíše pouze tehdy, pokud nový stav přetrvá aspoň 3 snímky po sobě
+        for (let i = 0; i < collectedSamples.length - 2; i++) {
+            let b0 = collectedSamples[i].bit;
+            let b1 = collectedSamples[i+1].bit;
+            let b2 = collectedSamples[i+2].bit;
+            
+            if (b0 === b1 && b1 === b2 && b0 !== currentState) {
+                currentState = b0;
                 edges.push({ time: collectedSamples[i].time, state: currentState });
             }
         }
@@ -428,35 +473,31 @@
         let bytes = [];
         let searchStartTime = recordStartTime;
 
-        // Čteme přesně 3 bajty - s dynamickou synchronizací na každý Start bit
+        // Dekódování 3 bajtů s dynamickým upínáním na odfiltrované Start bity
         for (let b = 0; b < 3; b++) {
-            // Najdeme první rozsvícení (Start bit) v aktuálním okně
             let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
             
             if (!startEdge) {
-                statusText.innerText = `Chyba signálu. Časování čipu "uplavalo" a nenašel jsem Start bit u bajtu ${b+1}.`;
+                statusText.innerText = `Chyba signálu. Šum smazal Start bit u bajtu ${b+1}.`;
                 return;
             }
 
             let byteStartTime = startEdge.time;
             let decodedByte = 0;
-
-            // Skok do poloviny prvního datového bitu: 150ms (Start bit) + 75ms (půlka datového bitu 0)
-            let readTime = byteStartTime + 225;
+            let readTime = byteStartTime + 225; // Skok doprostřed prvního datového bitu
             
             for (let i = 0; i < 8; i++) {
                 if (getBitAtTime(readTime) === 1) {
                     decodedByte |= (1 << i);
                 }
-                readTime += 150; // Skok na další bit
+                readTime += 150; 
             }
             
             bytes.push(decodedByte);
-            
-            // Posuneme se o kousek dál, abychom bezpečně přeskočili Stop bit a hledali další Start
             searchStartTime = readTime + 100; 
         }
 
+        // Verifikace tajné hardwarové pečeti (0xAA = 170)
         if (bytes[0] === 170) {
             beers = bytes[1];
             minutes = bytes[2];
@@ -469,7 +510,7 @@
             
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170).`;
+            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170). Zkus to znovu.`;
             setTimeout(() => { if (streamActive && appState === 'IDLE') statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko..."; }, 3000);
         }
         collectedSamples = [];
