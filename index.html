@@ -238,8 +238,9 @@
 
     let streamActive = false;
     
-    // Naše jasně definované stavy: 'IDLE', 'WAIT_LIGHT', 'SYNC_LIGHT', 'RECORD_DATA'
+    // Stavy aplikace: 'IDLE', 'WAIT_LIGHT', 'BLIND_SYNC', 'WAIT_DROP', 'RECORD_DATA'
     let appState = 'IDLE'; 
+    let syncStartTime = 0;
     
     let sampleInterval = null;
     let collectedSamples = [];
@@ -270,13 +271,12 @@
         }
     });
 
-    // Uživatel zaškrtl políčko
     contactChk.addEventListener('change', () => {
         if (contactChk.checked && streamActive) {
             setTimeout(() => {
                 darkIntensity = getRawBlue();
                 appState = 'WAIT_LIGHT';
-                statusText.innerText = "🌑 Tma uložena. Teď spusť sekvenci na krabičce (čekám na světlo)...";
+                statusText.innerText = "🌑 Tma uložena. Můžeš zapnout 5s sekvenci na krabičce...";
                 targetBox.style.borderColor = "#00e5ff";
             }, 300);
         } else {
@@ -314,61 +314,67 @@
             signalText.innerText = "ČEKÁM NA ZAŠKRTNUTÍ KALIBRACE";
         } 
         
-        // STAV 1: Tma uložena, čekáme na první prudký nárůst světla
+        // STAV 1: Tma uložena, čekáme na ROZSVÍCENÍ LED
         else if (appState === 'WAIT_LIGHT') {
-            signalText.innerText = `ČEKÁM NA ROZSVÍCENÍ (Tma: ${darkIntensity.toFixed(0)})`;
+            signalText.innerText = `ČEKÁM NA SVĚTLO (Tma: ${darkIntensity.toFixed(0)})`;
             
             // Pokud jas prudce stoupne
             if (currentBlue > darkIntensity + 20) {
-                appState = 'SYNC_LIGHT';
+                appState = 'BLIND_SYNC'; // Přepínáme do slepého módu
+                syncStartTime = Date.now();
                 calibrationSamples = [];
                 targetBox.style.borderColor = "#4caf50";
                 targetBox.style.borderStyle = "solid";
-                statusText.innerText = "🔒 SYNC: Detekována svítící LED, kalibruji (čekám až zhasne)...";
             }
         } 
         
-        // STAV 2: Úvodní 4s sekvence svítí. Sbíráme data a čekáme až zhasne
-        else if (appState === 'SYNC_LIGHT') {
-            displayPercent = 100; // Vizuálně držíme na max, svítí
-            signalText.innerText = `KALIBRACE LED: Síla ${currentBlue.toFixed(0)}`;
+        // STAV 2: SLEPÉ OKNO (Čekáme přesně 3,5 sekundy a ignorujeme výkyvy jasu od kamery)
+        else if (appState === 'BLIND_SYNC') {
+            displayPercent = 100;
             calibrationSamples.push(currentBlue);
             
-            let avgCal = calibrationSamples.reduce((a,b)=>a+b, 0) / calibrationSamples.length;
+            let elapsedMs = Date.now() - syncStartTime;
+            let elapsedSec = (elapsedMs / 1000).toFixed(1);
             
-            // Hranice pro zhasnutí: Jas klesne o 40% pod průměrnou svítící hodnotu
-            let dropThreshold = darkIntensity + (avgCal - darkIntensity) * 0.6;
+            statusText.innerText = `🔒 SYNC: Stabilizuji expozici kamery... (${elapsedSec}s / 3.5s)`;
+            signalText.innerText = `IGNORUJI VÝKYVY: ${currentBlue.toFixed(0)}`;
             
-            if (currentBlue < dropThreshold) {
-                // LEDka pohasla! Byla to jen chyba ruky, nebo skutečně svítila dlouho?
-                if (calibrationSamples.length > 25) { 
-                    // Svítila dostatečně dlouho (cca 1 sekundu a víc). Jdeme na přenos!
-                    appState = 'RECORD_DATA';
-                    brightIntensity = avgCal;
-                    dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.5;
-                    
-                    targetBox.style.borderColor = "#ff9800";
-                    statusText.innerText = "📥 TELEPORT: Zhasnuto. Nyní sosám data z blikání...";
-                    
-                    collectedSamples = [];
-                    sampleInterval = setInterval(() => {
-                        let sampleBlue = getRawBlue();
-                        let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
-                        collectedSamples.push(bit);
-                    }, 100);
-
-                    // Nahráváme přesně 3,8 sekundy a pak jdeme dekódovat
-                    setTimeout(decodeSlowOpticalData, 3800);
-                } else {
-                    // Byl to jen mžik/pohnutí ruky, vracíme se do čekání
-                    appState = 'WAIT_LIGHT';
-                    targetBox.style.borderColor = "#00e5ff";
-                    statusText.innerText = "⚠️ Falešný záblesk. Znovu čekám na souvislé svícení...";
-                }
+            if (elapsedMs >= 3500) {
+                // Slepé okno uběhlo, foťák se uklidnil. Vypočítáme skutečný jas z posledních vzorků.
+                appState = 'WAIT_DROP';
+                
+                // Vezmeme průměr jen z poslední 1 sekundy (kdy už expozice foťáku neblázní)
+                let recentSamples = calibrationSamples.slice(-30);
+                brightIntensity = recentSamples.reduce((a,b)=>a+b, 0) / recentSamples.length;
+                dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.5;
+                
+                statusText.innerText = "⚠️ PŘIPRAVENO: Nyní čekám na zhasnutí LED pro start dat...";
             }
-        } 
+        }
         
-        // STAV 3: Nahrávání
+        // STAV 3: Expozice ustálena, 3.5s uběhlo, teď čekáme až LEDka poprvé ZHASNE
+        else if (appState === 'WAIT_DROP') {
+            displayPercent = 100;
+            signalText.innerText = `ČEKÁM NA ZHASNUTÍ (Práh: ${dynamicThreshold.toFixed(0)})`;
+            
+            // LEDka zhasla! Začíná přenos
+            if (currentBlue < dynamicThreshold) {
+                appState = 'RECORD_DATA';
+                targetBox.style.borderColor = "#ff9800";
+                statusText.innerText = "📥 TELEPORT: Zhasnuto! Sosám data z blikání...";
+                
+                collectedSamples = [];
+                sampleInterval = setInterval(() => {
+                    let sampleBlue = getRawBlue();
+                    let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
+                    collectedSamples.push(bit);
+                }, 100);
+
+                setTimeout(decodeSlowOpticalData, 3800);
+            }
+        }
+        
+        // STAV 4: Nahrávání dat
         else if (appState === 'RECORD_DATA') {
             signalText.innerText = `PŘENOS DAT: ${displayPercent}%`;
         }
@@ -379,7 +385,7 @@
 
     function decodeSlowOpticalData() {
         clearInterval(sampleInterval);
-        appState = 'IDLE'; // Konec, resetujeme stav
+        appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
         contactChk.checked = false; 
@@ -405,7 +411,7 @@
             dataPanel.classList.remove('hidden');
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba přenosu (Zachyceno jen ${edges} hran, signál byl příliš slabý). Zkus to znovu.`;
+            statusText.innerText = `Chyba přenosu (Signál znehodnocen, zachyceno jen ${edges} hran). Zkus to znovu.`;
             dataPanel.classList.add('hidden');
         }
 
