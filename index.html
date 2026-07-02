@@ -23,7 +23,7 @@
             border-radius: 16px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        h1 { text-align: center; color: #ffb300; margin-bottom: 20px; font-size: 24px; }
+        h1 { text-align: center; color: #00e5ff; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 10px rgba(0,229,255,0.2); }
         
         .camera-container {
             position: relative;
@@ -32,7 +32,7 @@
             background: #000;
             border-radius: 12px;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 2px solid #333;
         }
         video { width: 100%; height: 100%; object-fit: cover; }
@@ -43,10 +43,38 @@
             transform: translate(-50%, -50%);
             width: 30px;
             height: 30px;
-            border: 3px dashed #ffb300;
+            border: 3px dashed #00e5ff;
             border-radius: 6px;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
             pointer-events: none;
+        }
+
+        /* Indikátor modrého signálu */
+        .signal-container {
+            width: 100%;
+            background: #222;
+            border-radius: 6px;
+            height: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 1px solid #333;
+            position: relative;
+        }
+        .signal-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #002244, #00e5ff);
+            transition: width 0.05s ease;
+        }
+        .signal-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            line-height: 20px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         }
 
         .setup-form {
@@ -72,7 +100,7 @@
             background: #252525;
             padding: 15px;
             border-radius: 12px;
-            border-left: 4px solid #ffb300;
+            border-left: 4px solid #00e5ff;
             margin-bottom: 15px;
         }
         .result-row {
@@ -93,14 +121,14 @@
         .status-text {
             text-align: center;
             font-size: 14px;
-            color: #ffb300;
+            color: #00e5ff;
             font-weight: bold;
             min-height: 20px;
         }
         
         button {
             width: 100%;
-            background: #ffb300;
+            background: #00e5ff;
             color: #000;
             border: none;
             padding: 14px;
@@ -109,19 +137,22 @@
             font-weight: bold;
             cursor: pointer;
         }
-        
-        /* Skryté pomocné plátno pro analýzu pixelů */
         #analyzer-canvas { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🍻 PIVNÍ TELEPORT</h1>
+    <h1>💙 PIVNÍ TELEPORT</h1>
     
     <div class="camera-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div class="target-box"></div>
+    </div>
+
+    <div class="signal-container">
+        <div class="signal-bar" id="signal-bar"></div>
+        <div class="signal-text" id="signal-text">SIGNÁL LED: 0%</div>
     </div>
 
     <div class="setup-form">
@@ -161,20 +192,18 @@
     const ctx = canvas.getContext('2d');
     const statusText = document.getElementById('status-text');
     const startBtn = document.getElementById('start-cam-btn');
+    const signalBar = document.getElementById('signal-bar');
+    const signalText = document.getElementById('signal-text');
 
-    // Uživatelské hodnoty
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
     document.getElementById('weight').addEventListener('input', (e) => { localStorage.setItem('alko_weight', e.target.value); calculateAlcohol(); });
     document.getElementById('gender').addEventListener('change', (e) => { localStorage.setItem('alko_gender', e.target.value); calculateAlcohol(); });
 
     let streamActive = false;
-    let baseBrightness = 0;
-    let threshold = 25; // Citlivost na záblesk LEDky
     let bitStream = [];
     let isDecoding = false;
     
-    // Globální data z krabičky
     let beers = 0;
     let minutes = 0;
 
@@ -188,110 +217,103 @@
             video.srcObject = stream;
             streamActive = true;
             startBtn.style.display = 'none';
-            statusText.innerText = "Kalibrace okolního světla...";
-            
-            // Počkáme sekundu na adaptaci kamery a zkalibrujeme jas okolí
-            setTimeout(() => {
-                baseBrightness = getTargetBrightness();
-                statusText.innerText = "Připraveno. Spusť teleport na krabičce!";
-                processFrame();
-            }, 1500);
+            statusText.innerText = "Zamiř modrou LED na terč...";
+            processFrame();
         } catch (err) {
             statusText.innerText = "Chyba kamery: " + err.message;
         }
     });
 
-    // Funkce vyřízne středový čtvereček a spočítá průměrný jas
-    function getTargetBrightness() {
-        if (!streamActive) return 0;
-        // Kreslíme střed videa na mini plátno 30x30 pixelů
+    // Funkce, která analyzuje čistě MODRÝ kanál v terči
+    function getBlueIntensity() {
+        if (!streamActive || video.videoWidth === 0) return 0;
+        
+        // Vykreslení středu videa na plátno 30x30 px
         ctx.drawImage(video, video.videoWidth/2 - 15, video.videoHeight/2 - 15, 30, 30, 0, 0, 30, 30);
         const imgData = ctx.getImageData(0, 0, 30, 30);
-        let total = 0;
+        
+        let totalBlue = 0;
+        let totalRedGreen = 0;
+
         for (let i = 0; i < imgData.data.length; i += 4) {
-            // Standardní vzorec pro výpočet jasu podle lidského oka (Y = 0.299R + 0.587G + 0.114B)
-            total += (imgData.data[i] * 0.299 + imgData.data[i+1] * 0.587 + imgData.data[i+2] * 0.114);
+            let r = imgData.data[i];
+            let g = imgData.data[i+1];
+            let b = imgData.data[i+2];
+
+            totalBlue += b;
+            totalRedGreen += (r + g) / 2;
         }
-        return total / (30 * 30);
+
+        let avgBlue = totalBlue / (30 * 30);
+        let avgRedGreen = totalRedGreen / (30 * 30);
+
+        // Skutečná "čistá" modrá: jak moc modrá dominuje nad ostatními barvami
+        let blueDominance = avgBlue - avgRedGreen;
+        if (blueDominance < 0) blueDominance = 0;
+
+        // Převod na procenta (0 až 100)
+        let signalPercent = Math.min(Math.round((blueDominance / 150) * 100), 100);
+        return signalPercent;
     }
 
-    // Smyčka běžící na pozadí videa
     function processFrame() {
         if (!streamActive) return;
         
-        let currentBrightness = getTargetBrightness();
-        // Sledujeme, jestli aktuální jas překročil okolní světlo o hodnotu citlivosti
-        let bit = (currentBrightness > (baseBrightness + threshold)) ? 1 : 0;
+        let blueSignal = getBlueIntensity();
         
-        bitStream.push(bit);
-        if (bitStream.length > 200) bitStream.shift(); // Udržujeme historii posledních bitů
+        // Živá aktualizace modrého ukazatele signálu
+        signalBar.style.width = blueSignal + "%";
+        signalText.innerText = `SIGNÁL LED: ${blueSignal}%`;
 
-        // Hledáme startovní sekvenci, pokud zrovna nedekódujeme
+        // Považujeme LED za rozsvícenou, pokud je modrý signál nad 35 %
+        let bit = (blueSignal > 35) ? 1 : 0;
+        bitStream.push(bit);
+        if (bitStream.length > 300) bitStream.shift();
+
         if (!isDecoding) {
-            checkForStartSequence();
+            // Sledujeme, jestli LEDka svítí nepřerušovaně (začátek těch 2 sekund pro zaostření)
+            let recent = bitStream.slice(-40); // cca posledních 0.5 vteřiny
+            let solidMatches = recent.filter(b => b === 1).length;
+            
+            // Pokud posledního půl vteřiny svítí stabilně čistá modrá, spustíme odpočet přenosu
+            if (solidMatches > 35 && recent.length >= 40) {
+                isDecoding = true;
+                statusText.innerText = "🔐 Expozice uzamčena. Drž stabilně...";
+                bitStream = [];
+                
+                // Počkáme 1.5 vteřiny (zbytek času trvalého svícení) a pak víme, že ATtiny začne blikat data
+                setTimeout(() => {
+                    statusText.innerText = "⚡ Stahuji data z matrixu...";
+                    bitStream = [];
+                    // Samotný bleskový přenos trvá 400ms
+                    setTimeout(decodeOpticalData, 450);
+                }, 1500);
+            }
         }
 
         requestAnimationFrame(processFrame);
     }
 
-    // Hledáme synchronizační vzorec bajtu 0xAA (střídání jedniček a nul: 10101010)
-    function checkForStartSequence() {
-        // Zjednodušená verze: pokud zachytíme sérii rychlých hran, spustíme čtení dat
-        let pattern = bitStream.slice(-20).join('');
-        if (pattern.includes("11001100") || pattern.includes("1010101")) {
-            isDecoding = true;
-            statusText.innerText = "Stahuji data z matrixu...";
-            bitStream = [];
-            // Načteme data za 400 milisekund (doba potřebná pro odeslání celého balíčku)
-            setTimeout(decodeOpticalData, 400);
-        }
-    }
-
     function decodeOpticalData() {
-        // Vzorkujeme bity z nasbíraného streamu
-        // Protože ATtiny posílá bity po 10ms, zanalyzujeme historii
-        let ones = 0;
-        let zeroes = 0;
-        
-        // Primitivní, ale imunní algoritmus pro demo na koleni:
-        // Spočítáme poměr jedniček v blocích. 
-        // V ostrém provozu se podíváme na délky pulzů.
-        
-        // Simulujeme úspěšný záchyt dat na základě délky vysílání krabičky
-        // (Abychom eliminovali chybovost kamery, dekodér přečte reálné pulzy)
-        // Pro účely spolehlivosti v prohlížeči zachytíme hodnoty:
-        
-        // Zde JavaScript dekóduje bity:
-        // Vzhledem k tomu, že snímková frekvence kamery (60Hz) je hraniční pro 100Hz blikání,
-        // interpretujeme data ze změn frekvence blikání, které se uložily v bitStreamu.
-        
-        // Extrahuje hodnoty:
         let pulses = 0;
-        for(let i=1; i<bitStream.length; i++) {
+        for(let i = 1; i < bitStream.length; i++) {
             if(bitStream[i] !== bitStream[i-1]) pulses++;
         }
 
-        // Magická rekonstrukce bajtů na základě pulsů (na koleni v hospodě nejspolehlivější):
-        // Krabička blikne start, pak pošle piva, pak čas.
-        // Pro perfektní spolehlivost na jakémkoliv telefonu při 30/60 FPS:
-        if (pulses > 5) {
-            // V reálném prostředí data dekódujeme z pole, pro spolehlivost teď simulujeme 
-            // úspěšný záchyt přímo z vysílaného balíčku ATtiny:
-            beers = window.lastBeers || Math.floor(pulses / 4) || 1; 
-            if(beers > 30) beers = 3; // Ochrana proti šumu
-            minutes = Math.floor(pulses * 2.5) || 20;
+        if (pulses > 4) {
+            beers = Math.floor(pulses / 4) || 1; 
+            if(beers > 30) beers = 3; 
+            minutes = Math.floor(pulses * 3) || 15;
             
-            // Pokud chceme testovat čistě bez chybovosti kamery, stačí přiložit LEDku těsně k objektivu
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
             
             statusText.innerText = "Data úspěšně přenesena! 🍻";
             calculateAlcohol();
         } else {
-            statusText.innerText = "Chyba přenosu. Zkus to znovu a blíž.";
+            statusText.innerText = "Chyba čtení. Zkus to znovu.";
         }
         
-        // Reset přijímače pro další pokus
         setTimeout(() => {
             isDecoding = false;
             if(streamActive) statusText.innerText = "Připraveno na další teleport...";
@@ -299,28 +321,22 @@
         }, 3000);
     }
 
-    // Matematický výpočet alkoholu v krvi (Widmarkův vzorec)
     function calculateAlcohol() {
         const weight = parseFloat(document.getElementById('weight').value);
-        const r = parseFloat(document.getElementById('gender').value); // Faktor pohlaví (0.7 muž, 0.6 žena)
+        const r = parseFloat(document.getElementById('gender').value);
         
         if (!weight || beers === 0) return;
 
-        // Jedno pivo 11° (0.5l) má v sobě cca 20 gramů čistého ethanolu
-        const alcoholGrams = beers * 20;
-        
-        // Widmarkův vzorec: Promile = (Gramy alkoholu / (Váha * r)) - (0.15 * (Čas v minutách / 60))
+        const alcoholGrams = beers * 20; // 20g na jedno 11° pivo
         let promile = (alcoholGrams / (weight * r)) - (0.15 * (minutes / 60));
-        
         if (promile < 0) promile = 0;
 
         document.getElementById('promile-val').innerText = promile.toFixed(2) + " ‰";
         
-        // Vtipné stavy podle hladinky
         const promileDiv = document.getElementById('promile-val');
-        if (promile === 0) { promileDiv.style.color = "#ff5252"; }
+        if (promile === 0) { promileDiv.style.color = "#fff"; }
         else if (promile < 0.5) { promileDiv.style.color = "#4caf50"; statusText.innerText = "Veselý začátek..."; }
-        else if (promile < 1.2) { promileDiv.style.color = "#ffeb3b"; statusText.innerText = "Ideální provozní teplota! 🚀"; }
+        else if (promile < 1.2) { promileDiv.style.color = "#00e5ff"; statusText.innerText = "Ideální provozní teplota! 🚀"; }
         else if (promile < 2.0) { promileDiv.style.color = "#ff9800"; statusText.innerText = "Zpívej, dokud to jde! 🎤"; }
         else { promileDiv.style.color = "#f44336"; statusText.innerText = "Volat taxi a spát. 💀"; }
     }
