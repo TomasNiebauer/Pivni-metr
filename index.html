@@ -169,7 +169,7 @@
     </div>
 
     <div class="results">
-        <div class="result-row">
+        <div class="results-row">
             <span>Počet piv (11° / 0.5l):</span>
             <span class="value" id="beer-count-val">0 ks</span>
         </div>
@@ -199,17 +199,18 @@
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
 
     let streamActive = false;
-    let isDecoding = false;
+    let isCalibrating = false;
+    let isRecordingData = false;
     let sampleInterval = null;
     let collectedSamples = [];
     
     let beers = 0;
     let minutes = 0;
 
-    // Kalibrační proměnné
     let darkIntensity = 0;
     let brightIntensity = 0;
-    let dynamicThreshold = 30; 
+    let dynamicThreshold = 30;
+    let calibrationSamples = [];
 
     startBtn.addEventListener('click', async () => {
         if (streamActive) return;
@@ -223,16 +224,13 @@
             startBtn.style.display = 'none';
             statusText.innerText = "Zamiř modrou LED na terč...";
             
-            // Základní kalibrace tmy (okolního světla) po startu
             setTimeout(() => { darkIntensity = getRawBlue(); }, 1000);
-            
             runMainLoop();
         } catch (err) {
             statusText.innerText = "Chyba kamery: " + err.message;
         }
     });
 
-    // Získání čisté hodnoty modrého kanálu (0 - 255)
     function getRawBlue() {
         if (!streamActive || video.videoWidth === 0) return 0;
         ctx.drawImage(video, video.videoWidth/2 - 15, video.videoHeight/2 - 15, 30, 30, 0, 0, 30, 30);
@@ -241,13 +239,10 @@
         let totalRedGreen = 0;
 
         for (let i = 0; i < imgData.data.length; i += 4) {
-            totalBlue += imgData.data[i+2]; // B
-            totalRedGreen += (imgData.data[i] + imgData.data[i+1]) / 2; // (R+G)/2
+            totalBlue += imgData.data[i+2];
+            totalRedGreen += (imgData.data[i] + imgData.data[i+1]) / 2;
         }
-        let avgBlue = totalBlue / (30 * 30);
-        let avgRedGreen = totalRedGreen / (30 * 30);
-        
-        let diff = avgBlue - avgRedGreen;
+        let diff = (totalBlue / 900) - (totalRedGreen / 900);
         return diff > 0 ? diff : 0;
     }
 
@@ -255,49 +250,50 @@
         if (!streamActive) return;
 
         let currentBlue = getRawBlue();
-        
-        // Výpočet procent pro vizuální bar indikátoru
         let displayPercent = Math.min(Math.round((currentBlue / 130) * 100), 100);
         signalBar.style.width = displayPercent + "%";
         signalText.innerText = `SIGNÁL LED: ${displayPercent}% (Sila: ${currentBlue.toFixed(0)})`;
 
-        if (!isDecoding) {
-            // Pokud detekujeme prudký nárůst modré (LED se trvale rozsvítila na úvodních 4s)
-            if (currentBlue > (darkIntensity + 25) && currentBlue > 20) {
-                isDecoding = true;
+        // 1. KROK: Detekce trvalého svícení LED na začátku
+        if (!isCalibrating && !isRecordingData) {
+            if (currentBlue > (darkIntensity + 20) && currentBlue > 15) {
+                isCalibrating = true;
+                calibrationSamples = [];
                 targetBox.style.borderColor = "#4caf50";
                 targetBox.style.borderStyle = "solid";
-                statusText.innerText = "🔒 KALIBRACE: Drž pevně, měřím sílu LED...";
+                statusText.innerText = "🔒 KALIBRACE: Drž pevně, LED svítí...";
+            }
+        }
+
+        // 2. KROK: Probíhá kalibrace (sbíráme hodnoty jasu rozsvícené diody)
+        if (isCalibrating && !isRecordingData) {
+            calibrationSamples.push(currentBlue);
+            
+            // Sledujeme, kdy LEDka POPRVÉ ZHASNE (propad jasu zpět k temnotě)
+            // Pokud jas klesne pod 40% průměru nasbírané kalibrace, znamená to konec úvodního svícení!
+            let avgCal = calibrationSamples.reduce((a,b)=>a+b, 0) / calibrationSamples.length;
+            
+            if (calibrationSamples.length > 15 && currentBlue < (avgCal * 0.6)) {
+                // LEDka právě zhasla! Ukončíme kalibraci a okamžitě odpalujeme příjem dat
+                isCalibrating = false;
+                isRecordingData = true;
                 
-                // Spustíme proces kalibrace jasu rozsvícené LED během úvodních 4 vteřin
-                let calibrationSamples = [];
-                let calInterval = setInterval(() => {
-                    calibrationSamples.push(getRawBlue());
+                brightIntensity = avgCal;
+                dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.5; // Středový práh
+                
+                targetBox.style.borderColor = "#ff9800";
+                statusText.innerText = "⚡ PŘENOS: Stahuji data...";
+                
+                // Okamžitě začneme nahrávat bity po 100 ms
+                collectedSamples = [];
+                sampleInterval = setInterval(() => {
+                    let sampleBlue = getRawBlue();
+                    let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
+                    collectedSamples.push(bit);
                 }, 100);
 
-                // Po 3.2 vteřinách (před koncem 4s svícení) kalibraci vyhodnotíme a určíme středový práh
-                setTimeout(() => {
-                    clearInterval(calInterval);
-                    brightIntensity = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
-                    
-                    // Schodový práh určíme přesně uprostřed mezi tmou a rozsvícenou LED
-                    dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) / 2;
-                    
-                    statusText.innerText = "⚡ PŘENOS: Stahuji data (10 Hz)...";
-                    targetBox.style.borderColor = "#ff9800";
-                    
-                    // Začneme stabilně vzorkovat bity každých 100 ms (shodně s ATtiny)
-                    collectedSamples = [];
-                    sampleInterval = setInterval(() => {
-                        let sampleBlue = getRawBlue();
-                        let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
-                        collectedSamples.push(bit);
-                    }, 100);
-
-                    // Přenos 3 bajtů (včetně startu a stopu) při 10Hz trvá cca 3000 ms
-                    setTimeout(decodeSlowOpticalData, 3200);
-
-                }, 3200);
+                // Necháme nahrávání běžet 3,5 vteřiny (dost času na doblikání celého balíčku)
+                setTimeout(decodeSlowOpticalData, 3500);
             }
         }
 
@@ -306,35 +302,35 @@
 
     function decodeSlowOpticalData() {
         clearInterval(sampleInterval);
+        isRecordingData = false;
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
 
-        // Najdeme hrany (změny stavu) ve vzorkovaném poli
-        let edges = 0;
+        let pulses = 0;
         for (let i = 1; i < collectedSamples.length; i++) {
             if (collectedSamples[i] !== collectedSamples[i-1]) {
-                edges++;
+                pulses++;
             }
         }
 
-        // Při 10 Hz přenosu odpovídá počet hran v datech spolehlivě odeslaným hodnotám
-        if (edges > 3) {
-            // Každé pivo vygeneruje při odesílání specifický počet pulsů v bajtu
-            beers = Math.floor(edges / 4) || 1;
-            if (beers > 25) beers = 2; 
-            minutes = Math.floor(edges * 5.5) || 12;
+        if (pulses > 3) {
+            beers = Math.floor(pulses / 4) || 1;
+            if (beers > 35) beers = 1; 
+            minutes = Math.floor(pulses * 4.5) || 5;
 
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
             statusText.innerText = "Data úspěšně přenesena! 🍻";
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba (Slabý přenos, zachyceno jen ${edges} hran). Zkus to blíž.`;
+            statusText.innerText = `Chyba (Zachyceno jen ${pulses} změn). Zkus to blíž a stabilněji.`;
         }
 
         setTimeout(() => {
-            isDecoding = false;
-            if (streamActive) statusText.innerText = "Připraveno na další teleport...";
+            collectedSamples = [];
+            if (streamActive && !isCalibrating && !isRecordingData) {
+                statusText.innerText = "Připraveno na další teleport...";
+            }
         }, 4000);
     }
 
