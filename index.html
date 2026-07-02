@@ -184,9 +184,15 @@
     });
 
     scanAgainBtn.addEventListener('click', () => {
-        resultsView.classList.add('hidden'); scannerView.classList.remove('hidden');
-        debugPanel.classList.add('hidden'); appState = 'IDLE'; contactChk.checked = false;
+        resultsView.classList.add('hidden'); 
+        scannerView.classList.remove('hidden');
+        debugPanel.classList.add('hidden'); 
+        appState = 'IDLE'; 
+        contactChk.checked = false;
         statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
+        
+        // OPRAVA: Znovu nastartujeme hlavní sledovací smyčku kamery!
+        runMainLoop();
     });
 
     contactChk.addEventListener('change', () => {
