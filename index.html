@@ -25,18 +25,27 @@
         }
         h1 { text-align: center; color: #00e5ff; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 10px rgba(0,229,255,0.2); }
         
+        .hidden { display: none !important; }
+
+        /* SKENOVACÍ OBRAZOVKA */
         .camera-container {
             position: relative;
             width: 100%;
             height: 250px;
-            background: #000;
+            background: #0d0d0d;
             border-radius: 12px;
             overflow: hidden;
             margin-bottom: 15px;
             border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Video a terč zpočátku schované, ukážou se až po startu */
+        #webcam { display: none; width: 100%; height: 100%; object-fit: cover; }
         .target-box {
+            display: none;
             position: absolute;
             top: 50%;
             left: 50%;
@@ -48,6 +57,12 @@
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
             pointer-events: none;
             transition: all 0.2s ease;
+        }
+
+        .camera-placeholder {
+            color: #555;
+            font-size: 14px;
+            font-weight: bold;
         }
 
         .signal-container {
@@ -87,37 +102,29 @@
             gap: 10px;
             border: 1px solid #333;
         }
-        .calibration-mode input[type="checkbox"] {
-            width: 22px;
-            height: 22px;
-            cursor: pointer;
-        }
-        .calibration-mode label {
-            font-size: 14px;
-            color: #ccc;
-            cursor: pointer;
-            user-select: none;
-        }
+        .calibration-mode input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; }
+        .calibration-mode label { font-size: 14px; color: #ccc; cursor: pointer; user-select: none; }
 
-        .hidden { display: none !important; }
-
+        /* VÝSLEDKOVÁ OBRAZOVKA */
         .setup-form {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-bottom: 20px;
             background: #2a2a2a;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
         }
+        .full-width { grid-column: span 2; }
         select, input {
-            background: #333;
+            background: #1e1e1e;
             border: 1px solid #444;
             color: #fff;
             padding: 10px;
             border-radius: 6px;
             font-size: 16px;
             width: 100%;
+            margin-top: 5px;
         }
 
         .results {
@@ -127,40 +134,47 @@
             border-left: 4px solid #00e5ff;
             margin-bottom: 15px;
         }
-        .result-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 16px;
-        }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
         .value { font-weight: bold; color: #fff; }
         .promile-large {
-            text-align: center;
-            font-size: 46px;
-            font-weight: bold;
-            color: #fff;
-            margin: 10px 0;
+            text-align: center; font-size: 52px; font-weight: bold;
+            color: #fff; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
+
+        /* Sekce vtipných statistik */
+        .funny-stats {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+        .funny-row {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #333;
+        }
+        .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .funny-title { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
+        .funny-val { font-size: 15px; color: #00e5ff; font-weight: bold; }
+
+        .gif-container { width: 100%; text-align: center; }
+        .gif-container img {
+            width: 100%; max-height: 220px; object-fit: cover;
+            border-radius: 12px; border: 2px solid #333;
+        }
+
         .status-text {
-            text-align: center;
-            font-size: 14px;
-            color: #00e5ff;
-            font-weight: bold;
-            min-height: 20px;
-            margin-top: 10px;
+            text-align: center; font-size: 14px; color: #00e5ff;
+            font-weight: bold; min-height: 20px; margin-top: 10px;
         }
         
         button {
-            width: 100%;
-            background: #00e5ff;
-            color: #000;
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+            width: 100%; background: #00e5ff; color: #000; border: none;
+            padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
         }
+        button:hover { background: #00b8cc; }
         #analyzer-canvas { display: none; }
     </style>
 </head>
@@ -169,24 +183,29 @@
 <div class="container">
     <h1>💙 PIVNÍ TELEPORT</h1>
     
-    <div class="camera-container">
-        <video id="webcam" autoplay playsinline muted></video>
-        <div class="target-box" id="target-box"></div>
+    <div id="scanner-view">
+        <div class="camera-container">
+            <div id="camera-placeholder" class="camera-placeholder">Kamera čeká na spuštění...</div>
+            <video id="webcam" playsinline muted></video>
+            <div class="target-box" id="target-box"></div>
+        </div>
+
+        <div class="signal-container">
+            <div class="signal-bar" id="signal-bar"></div>
+            <div class="signal-text" id="signal-text">SIGNÁL: ČEKÁM NA KAMERU</div>
+        </div>
+
+        <div class="calibration-mode" id="calib-container">
+            <input type="checkbox" id="close-contact-chk">
+            <label for="close-contact-chk">Přiloženo těsně (Kalibrovat tmu)</label>
+        </div>
+
+        <button id="start-cam-btn">Spustit skenování</button>
+        <div class="status-text" id="status-text">Připraveno ke spuštění</div>
     </div>
 
-    <div class="signal-container">
-        <div class="signal-bar" id="signal-bar"></div>
-        <div class="signal-text" id="signal-text">SIGNÁL: ČEKÁM NA KAMERU</div>
-    </div>
-
-    <div class="calibration-mode" id="calib-container">
-        <input type="checkbox" id="close-contact-chk">
-        <label for="close-contact-chk">Přiloženo těsně (Kalibrovat tmu)</label>
-    </div>
-
-    <button id="start-cam-btn">Spustit skenování</button>
-
-    <div id="data-panel" class="hidden">
+    <div id="results-view" class="hidden">
+        
         <div class="setup-form">
             <div>
                 <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
@@ -199,22 +218,51 @@
                 <span style="font-size: 12px; color: #aaa;">Váha (kg)</span>
                 <input type="number" id="weight" value="77" min="40" max="200">
             </div>
+            <div class="full-width">
+                <span style="font-size: 12px; color: #aaa;">Jídlo během pití (Zpomalí vstřebávání)</span>
+                <select id="food">
+                    <option value="1.0">Nic (Na lačno)</option>
+                    <option value="0.9">Něco málo k zakousnutí</option>
+                    <option value="0.8">Střední jídlo (Běžná porce)</option>
+                    <option value="0.7">Pořádná večeře (Gothaj s cibulí)</option>
+                </select>
+            </div>
         </div>
 
         <div class="results">
             <div class="result-row">
-                <span>Počet piv (11° / 0.5l):</span>
+                <span>Vypitých piv (11°):</span>
                 <span class="value" id="beer-count-val">0 ks</span>
             </div>
             <div class="result-row">
-                <span>Doba od 1. loku:</span>
+                <span>Rozpětí pití:</span>
                 <span class="value" id="time-val">0 min</span>
             </div>
             <div class="promile-large" id="promile-val">0.00 ‰</div>
+            <div class="status-text" id="fun-status" style="margin-top:0;">...</div>
         </div>
-    </div>
 
-    <div class="status-text" id="status-text">Kamera vypnuta</div>
+        <div class="funny-stats">
+            <div class="funny-row">
+                <span class="funny-title">🚗 Za volant můžeš sednout:</span>
+                <span class="funny-val" id="drive-val">Počítám...</span>
+            </div>
+            <div class="funny-row">
+                <span class="funny-title">🚲 Na kolo to s odřenýma ušima půjde:</span>
+                <span class="funny-val" id="bike-val">Počítám...</span>
+            </div>
+            <div class="funny-row">
+                <span class="funny-title">💘 Kdy pozvat někoho na rande?</span>
+                <span class="funny-val" id="date-val">Počítám...</span>
+            </div>
+        </div>
+
+        <div class="gif-container">
+            <img id="reaction-gif" src="" alt="Vibe Check">
+        </div>
+
+        <button id="scan-again-btn" style="margin-top: 20px; background: #333; color: #fff;">Skenovat znovu</button>
+    </div>
 
     <canvas id="analyzer-canvas" width="30" height="30"></canvas>
 </div>
@@ -223,27 +271,48 @@
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('analyzer-canvas');
     const ctx = canvas.getContext('2d');
+    
+    // UI Elementy
+    const scannerView = document.getElementById('scanner-view');
+    const resultsView = document.getElementById('results-view');
+    const placeholder = document.getElementById('camera-placeholder');
+    const targetBox = document.getElementById('target-box');
+    
     const statusText = document.getElementById('status-text');
+    const funStatus = document.getElementById('fun-status');
     const startBtn = document.getElementById('start-cam-btn');
+    const scanAgainBtn = document.getElementById('scan-again-btn');
     const signalBar = document.getElementById('signal-bar');
     const signalText = document.getElementById('signal-text');
-    const targetBox = document.getElementById('target-box');
     const contactChk = document.getElementById('close-contact-chk');
-    const dataPanel = document.getElementById('data-panel');
 
+    // Formulář a paměť
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
-    document.getElementById('weight').addEventListener('input', (e) => { localStorage.setItem('alko_weight', e.target.value); calculateAlcohol(); });
-    document.getElementById('gender').addEventListener('change', (e) => { localStorage.setItem('alko_gender', e.target.value); calculateAlcohol(); });
+    document.getElementById('food').value = localStorage.getItem('alko_food') || 1.0;
+    
+    // Přepočet alkoholu při jakékoliv změně formuláře
+    const inputs = ['weight', 'gender', 'food'];
+    inputs.forEach(id => {
+        document.getElementById(id).addEventListener('change', (e) => {
+            localStorage.setItem('alko_' + id, e.target.value);
+            calculateAlcohol();
+        });
+        if(id === 'weight') {
+            document.getElementById(id).addEventListener('input', (e) => {
+                localStorage.setItem('alko_weight', e.target.value);
+                calculateAlcohol();
+            });
+        }
+    });
 
     let streamActive = false;
+    let localStream = null;
     let appState = 'IDLE'; 
     let syncStartTime = 0;
     let recordStartTime = 0;
     
-    // Nové pole, kam ukládáme objekt: { čas_v_ms, logická_hodnota_bitu }
     let collectedSamples = [];
-    
     let beers = 0;
     let minutes = 0;
 
@@ -252,22 +321,39 @@
     let dynamicThreshold = 30;
     let calibrationSamples = [];
 
+    // Tlačítko START
     startBtn.addEventListener('click', async () => {
         if (streamActive) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            localStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment', frameRate: { ideal: 30 } },
                 audio: false
             });
-            video.srcObject = stream;
+            video.srcObject = localStream;
+            video.play();
             streamActive = true;
+            
+            // Odkryjeme video a zaměřovač
             startBtn.style.display = 'none';
+            placeholder.style.display = 'none';
+            video.style.display = 'block';
+            targetBox.style.display = 'block';
+            
             statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
             appState = 'IDLE';
             runMainLoop();
         } catch (err) {
             statusText.innerText = "Chyba kamery: " + err.message;
         }
+    });
+
+    // Tlačítko SKENOVAT ZNOVU
+    scanAgainBtn.addEventListener('click', () => {
+        resultsView.classList.add('hidden');
+        scannerView.classList.remove('hidden');
+        appState = 'IDLE';
+        contactChk.checked = false;
+        statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
     });
 
     contactChk.addEventListener('change', () => {
@@ -335,22 +421,18 @@
             displayPercent = 100;
             signalText.innerText = `ČEKÁM NA ZHASNUTÍ (Práh: ${dynamicThreshold.toFixed(0)})`;
             
-            // Moment, kdy LED poprvé zhasne! Nastavujeme absolutní nulu stopek (recordStartTime)
             if (currentBlue < dynamicThreshold) {
                 appState = 'RECORD_DATA';
-                recordStartTime = Date.now(); // Přesný okamžik T=0
+                recordStartTime = Date.now(); 
                 collectedSamples = [];
                 
                 targetBox.style.borderColor = "#ff9800";
                 statusText.innerText = "📥 TELEPORT: Čtu binární data (150ms bit)...";
-                
-                // Zpomalená sekvence posílá data 4.5 sekundy. My počkáme 5.5 sekund pro jistotu.
                 setTimeout(decodeExactBinary, 5500);
             }
         }
         else if (appState === 'RECORD_DATA') {
             signalText.innerText = `ČTU BINÁRNÍ KÓD...`;
-            // Ukládáme přesný čas framu z kamery a logický stav 1/0
             collectedSamples.push({
                 time: Date.now(),
                 bit: (currentBlue > dynamicThreshold) ? 1 : 0
@@ -358,10 +440,13 @@
         }
 
         signalBar.style.width = displayPercent + "%";
-        requestAnimationFrame(runMainLoop);
+        
+        // Zastavení smyčky pokud přepneme na výsledky
+        if (!scannerView.classList.contains('hidden')) {
+            requestAnimationFrame(runMainLoop);
+        }
     }
 
-    // NOVÝ, ABSOLUTNĚ PŘESNÝ MATEMATICKÝ DEKODÉR
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
@@ -370,7 +455,6 @@
 
         if (collectedSamples.length === 0) return;
 
-        // Pomocná funkce, která najde v našem záznamu hodnotu bitu přesně v daný čas (offset od zhasnutí)
         function getBitAtOffset(msOffset) {
             let targetTime = recordStartTime + msOffset;
             let closest = collectedSamples.reduce((a, b) => {
@@ -380,76 +464,109 @@
         }
 
         let byte1 = 0, byte2 = 0, byte3 = 0;
-        
-        // Pauza před startem dat v ATtiny je 450 ms.
-        // Chceme se trefit přesně doprostřed prvního 150ms bitu (Start bit), což je 450 + (150/2) = 525 ms.
         let offset = 450 + 75; 
 
-        // 1. BAJT (Synchronizační znak 0xAA, což je 170)
         let start1 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) {
-            if (getBitAtOffset(offset) === 1) byte1 |= (1 << i);
-            offset += 150;
-        }
+        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte1 |= (1 << i); offset += 150; }
         let stop1 = getBitAtOffset(offset); offset += 150;
 
-        // 2. BAJT (Počet piv)
         let start2 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) {
-            if (getBitAtOffset(offset) === 1) byte2 |= (1 << i);
-            offset += 150;
-        }
+        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte2 |= (1 << i); offset += 150; }
         let stop2 = getBitAtOffset(offset); offset += 150;
 
-        // 3. BAJT (Uplynulý čas v minutách)
         let start3 = getBitAtOffset(offset); offset += 150;
-        for(let i=0; i<8; i++) {
-            if (getBitAtOffset(offset) === 1) byte3 |= (1 << i);
-            offset += 150;
-        }
+        for(let i=0; i<8; i++) { if (getBitAtOffset(offset) === 1) byte3 |= (1 << i); offset += 150; }
         let stop3 = getBitAtOffset(offset); 
 
-        // Ochranná validace: Start bity musí být 1, Stop bity musí být 0 a První bajt musí být kontrolních 170 (0xAA)!
         if (start1 === 1 && stop1 === 0 && start2 === 1 && stop2 === 0 && byte1 === 170) {
             beers = byte2;
             minutes = byte3;
 
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
-            statusText.innerText = "🎯 100% ÚSPĚCH! Binární kód sedí.";
             
-            dataPanel.classList.remove('hidden');
+            // MAGIE: Skryjeme kameru a ukážeme výsledky!
+            scannerView.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+            
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${byte1} (má být 170). Zkus to znovu.`;
-            dataPanel.classList.add('hidden');
+            statusText.innerText = `Chyba v signálu. Zkus to znovu.`;
+            setTimeout(() => { if (streamActive && appState === 'IDLE') statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko..."; }, 3000);
         }
+        collectedSamples = [];
+    }
 
-        setTimeout(() => {
-            collectedSamples = [];
-            if (streamActive && appState === 'IDLE') {
-                statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko...";
-            }
-        }, 3000);
+    // Pomocná funkce pro lidský výpis času
+    function formatTime(hoursDec) {
+        if (hoursDec <= 0) return "Můžeš rovnou vyrazit!";
+        let h = Math.floor(hoursDec);
+        let m = Math.round((hoursDec - h) * 60);
+        if (h === 0) return `Za ${m} minut`;
+        return `Za ${h} h a ${m} min`;
     }
 
     function calculateAlcohol() {
         const weight = parseFloat(document.getElementById('weight').value);
         const r = parseFloat(document.getElementById('gender').value);
+        const foodFactor = parseFloat(document.getElementById('food').value);
+        
         if (!weight || beers === 0) return;
 
-        const alcoholGrams = beers * 20; 
+        // Vliv jídla: Sníží efektivní gramy alkoholu absorbované do krve
+        const alcoholGrams = beers * 20 * foodFactor; 
         let promile = (alcoholGrams / (weight * r)) - (0.15 * (minutes / 60));
         if (promile < 0) promile = 0;
 
+        // Formátování hlavního promile
         document.getElementById('promile-val').innerText = promile.toFixed(2) + " ‰";
         const promileDiv = document.getElementById('promile-val');
         
-        if (promile === 0) { promileDiv.style.color = "#fff"; }
-        else if (promile < 0.5) { promileDiv.style.color = "#4caf50"; statusText.innerText = "Veselý začátek..."; }
-        else if (promile < 1.2) { promileDiv.style.color = "#00e5ff"; statusText.innerText = "Ideální provozní teplota! 🚀"; }
-        else if (promile < 2.0) { promileDiv.style.color = "#ff9800"; statusText.innerText = "Zpívej, dokud to jde! 🎤"; }
-        else { promileDiv.style.color = "#f44336"; statusText.innerText = "Volat taxi a spát. 💀"; }
+        // Zábavné texty a Gify!
+        let gifUrl = "";
+        let dateText = "";
+
+        // Odbourávání probíhá rychlostí cca 0.15 ‰ za hodinu
+        let timeToDrive = promile / 0.15;
+        let timeToBike = promile > 0.3 ? (promile - 0.3) / 0.15 : 0; // Kolo bezpečně do 0.3‰
+
+        document.getElementById('drive-val').innerText = formatTime(timeToDrive);
+        document.getElementById('bike-val').innerText = formatTime(timeToBike);
+
+        // Hladinka vyhodnocení
+        if (promile === 0) { 
+            promileDiv.style.color = "#fff"; 
+            funStatus.innerText = "Ty jsi to snad vybryndal, ne?";
+            gifUrl = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif"; // Bored
+            dateText = "Běž na bar, seš moc střízlivej. Bude s tebou nuda.";
+        } 
+        else if (promile < 0.5) { 
+            promileDiv.style.color = "#4caf50"; 
+            funStatus.innerText = "Veselý začátek..."; 
+            gifUrl = "https://media.giphy.com/media/Zw3oBUuOlDJ3W/giphy.gif"; // Cheers Leonardo
+            dateText = "Ještě jedno si dej, ať se ti rozváže jazyk.";
+        } 
+        else if (promile < 1.2) { 
+            promileDiv.style.color = "#00e5ff"; 
+            funStatus.innerText = "Ideální provozní teplota! 🚀"; 
+            gifUrl = "https://media.giphy.com/media/tsX3YHXWGpu3TxgdNE/giphy.gif"; // Smooth Casanova
+            dateText = "Hned teď! Jsi král parketu a mistr slova!";
+        } 
+        else if (promile < 2.0) { 
+            promileDiv.style.color = "#ff9800"; 
+            funStatus.innerText = "Zpívej, dokud to jde! 🎤"; 
+            gifUrl = "https://media.giphy.com/media/ggcNOq2AlO40g/giphy.gif"; // Funny drunk dancing
+            dateText = "Už se radši nikoho na nic neptej. Fakt ne.";
+        } 
+        else { 
+            promileDiv.style.color = "#f44336"; 
+            funStatus.innerText = "Game Over. 💀"; 
+            gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; // Wasted
+            dateText = "Leda že by se jí líbilo tvoje chrápání. Jdi spát.";
+        }
+
+        document.getElementById('date-val').innerText = dateText;
+        document.getElementById('reaction-gif').src = gifUrl;
     }
 </script>
 </body>
