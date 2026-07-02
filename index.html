@@ -51,19 +51,13 @@
         .debug-panel { background: #111; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
         .debug-title { font-size: 12px; color: #aaa; margin-bottom: 8px; display: block; text-align: center; }
         .debug-timeline { display: flex; width: 100%; height: 30px; background: #000; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
-        .tl-1 { flex: 1; background: #00e5ff; height: 100%; border-right: 1px solid #005f6b; }
+        .tl-1 { flex: 1; background: #00e5ff; height: 100%; }
         .tl-0 { flex: 1; background: #1a1a1a; height: 100%; }
         .debug-stats { font-family: monospace; font-size: 11px; color: #00e5ff; margin-top: 8px; text-align: center; }
 
-        .setup-form {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a;
-            padding: 15px; border-radius: 12px; margin-bottom: 15px;
-        }
+        .setup-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .full-width { grid-column: span 2; }
-        select, input {
-            background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px;
-            border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px;
-        }
+        select, input { background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px; }
 
         .results { background: #252525; padding: 15px; border-radius: 12px; border-left: 4px solid #00e5ff; margin-bottom: 15px; }
         .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
@@ -75,10 +69,8 @@
         .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .funny-title { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
         .funny-val { font-size: 15px; color: #00e5ff; font-weight: bold; }
-
         .gif-container { width: 100%; text-align: center; }
         .gif-container img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
-
         .status-text { text-align: center; font-size: 14px; color: #00e5ff; font-weight: bold; min-height: 20px; margin-top: 10px; }
         button { width: 100%; background: #00e5ff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #00b8cc; }
@@ -96,19 +88,17 @@
             <video id="webcam" playsinline muted></video>
             <div class="target-box" id="target-box"></div>
         </div>
-
         <div class="signal-container">
             <div class="signal-bar" id="signal-bar"></div>
             <div class="signal-text" id="signal-text">SIGNÁL: ČEKÁM NA KAMERU</div>
         </div>
-
         <div class="calibration-mode" id="calib-container">
             <input type="checkbox" id="close-contact-chk">
             <label for="close-contact-chk">Přiloženo těsně (Kalibrovat tmu)</label>
         </div>
 
         <div id="debug-panel" class="debug-panel hidden">
-            <span class="debug-title">Osciloskop PWM (Délky pulzů)</span>
+            <span class="debug-title">Osciloskop (Očekávaná rychlost 250ms/bit)</span>
             <div class="debug-timeline" id="debug-timeline"></div>
             <div class="debug-stats" id="debug-stats">...</div>
         </div>
@@ -119,63 +109,24 @@
 
     <div id="results-view" class="hidden">
         <div class="setup-form">
-            <div>
-                <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
-                <select id="gender">
-                    <option value="0.7">Muž</option>
-                    <option value="0.6">Žena</option>
-                </select>
-            </div>
-            <div>
-                <span style="font-size: 12px; color: #aaa;">Váha (kg)</span>
-                <input type="number" id="weight" value="77" min="40" max="200">
-            </div>
-            <div class="full-width">
-                <span style="font-size: 12px; color: #aaa;">Jídlo během pití</span>
-                <select id="food">
-                    <option value="1.0">Nic (Na lačno)</option>
-                    <option value="0.9">Něco málo k zakousnutí</option>
-                    <option value="0.8">Střední jídlo</option>
-                    <option value="0.7">Pořádná večeře</option>
-                </select>
-            </div>
+            <div><span style="font-size: 12px; color: #aaa;">Pohlaví</span><select id="gender"><option value="0.7">Muž</option><option value="0.6">Žena</option></select></div>
+            <div><span style="font-size: 12px; color: #aaa;">Váha (kg)</span><input type="number" id="weight" value="77" min="40" max="200"></div>
+            <div class="full-width"><span style="font-size: 12px; color: #aaa;">Jídlo během pití</span><select id="food"><option value="1.0">Nic (Na lačno)</option><option value="0.9">Něco málo k zakousnutí</option><option value="0.8">Střední jídlo</option><option value="0.7">Pořádná večeře</option></select></div>
         </div>
-
         <div class="results">
-            <div class="result-row">
-                <span>Vypitých piv (11°):</span>
-                <span class="value" id="beer-count-val">0 ks</span>
-            </div>
-            <div class="result-row">
-                <span>Rozpětí pití:</span>
-                <span class="value" id="time-val">0 min</span>
-            </div>
+            <div class="result-row"><span>Vypitých piv (11°):</span><span class="value" id="beer-count-val">0 ks</span></div>
+            <div class="result-row"><span>Rozpětí pití:</span><span class="value" id="time-val">0 min</span></div>
             <div class="promile-large" id="promile-val">0.00 ‰</div>
             <div class="status-text" id="fun-status" style="margin-top:0;">...</div>
         </div>
-
         <div class="funny-stats">
-            <div class="funny-row">
-                <span class="funny-title">🚗 Za volant můžeš sednout:</span>
-                <span class="funny-val" id="drive-val">Počítám...</span>
-            </div>
-            <div class="funny-row">
-                <span class="funny-title">🚲 Na kolo to s odřenýma ušima půjde:</span>
-                <span class="funny-val" id="bike-val">Počítám...</span>
-            </div>
-            <div class="funny-row">
-                <span class="funny-title">💘 Kdy pozvat někoho na rande?</span>
-                <span class="funny-val" id="date-val">Počítám...</span>
-            </div>
+            <div class="funny-row"><span class="funny-title">🚗 Za volant můžeš sednout:</span><span class="funny-val" id="drive-val">Počítám...</span></div>
+            <div class="funny-row"><span class="funny-title">🚲 Na kolo to s odřenýma ušima půjde:</span><span class="funny-val" id="bike-val">Počítám...</span></div>
+            <div class="funny-row"><span class="funny-title">💘 Kdy pozvat někoho na rande?</span><span class="funny-val" id="date-val">Počítám...</span></div>
         </div>
-
-        <div class="gif-container">
-            <img id="reaction-gif" src="" alt="Vibe Check">
-        </div>
-
+        <div class="gif-container"><img id="reaction-gif" src="" alt="Vibe Check"></div>
         <button id="scan-again-btn" style="margin-top: 20px; background: #333; color: #fff;">Skenovat znovu</button>
     </div>
-
     <canvas id="analyzer-canvas" width="30" height="30"></canvas>
 </div>
 
@@ -191,7 +142,6 @@
     const debugPanel = document.getElementById('debug-panel');
     const debugTimeline = document.getElementById('debug-timeline');
     const debugStats = document.getElementById('debug-stats');
-    
     const statusText = document.getElementById('status-text');
     const startBtn = document.getElementById('start-cam-btn');
     const scanAgainBtn = document.getElementById('scan-again-btn');
@@ -203,24 +153,15 @@
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
     document.getElementById('food').value = localStorage.getItem('alko_food') || 1.0;
     
-    const inputs = ['weight', 'gender', 'food'];
-    inputs.forEach(id => {
-        document.getElementById(id).addEventListener('change', (e) => {
-            localStorage.setItem('alko_' + id, e.target.value);
-            calculateAlcohol();
-        });
-        if(id === 'weight') {
-            document.getElementById(id).addEventListener('input', (e) => {
-                localStorage.setItem('alko_weight', e.target.value);
-                calculateAlcohol();
-            });
-        }
+    ['weight', 'gender', 'food'].forEach(id => {
+        document.getElementById(id).addEventListener('change', (e) => { localStorage.setItem('alko_' + id, e.target.value); calculateAlcohol(); });
+        if(id === 'weight') document.getElementById(id).addEventListener('input', (e) => { localStorage.setItem('alko_weight', e.target.value); calculateAlcohol(); });
     });
 
     let streamActive = false;
-    let localStream = null;
     let appState = 'IDLE'; 
     let syncStartTime = 0;
+    let recordStartTime = 0;
     
     let collectedSamples = [];
     let beers = 0;
@@ -229,38 +170,22 @@
     let darkIntensity = 0;
     let brightIntensity = 0;
     let dynamicThreshold = 30;
-    let calibrationSamples = [];
 
     startBtn.addEventListener('click', async () => {
         if (streamActive) return;
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', frameRate: { ideal: 30 } },
-                audio: false
-            });
-            video.srcObject = localStream;
-            video.play();
-            streamActive = true;
-            
-            startBtn.style.display = 'none';
-            placeholder.style.display = 'none';
-            video.style.display = 'block';
-            targetBox.style.display = 'block';
-            
-            statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
-            appState = 'IDLE';
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', frameRate: { ideal: 30 } }, audio: false });
+            video.srcObject = stream; video.play(); streamActive = true;
+            startBtn.style.display = 'none'; placeholder.style.display = 'none';
+            video.style.display = 'block'; targetBox.style.display = 'block';
+            statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!"; appState = 'IDLE';
             runMainLoop();
-        } catch (err) {
-            statusText.innerText = "Chyba kamery: " + err.message;
-        }
+        } catch (err) { statusText.innerText = "Chyba kamery: " + err.message; }
     });
 
     scanAgainBtn.addEventListener('click', () => {
-        resultsView.classList.add('hidden');
-        scannerView.classList.remove('hidden');
-        debugPanel.classList.add('hidden');
-        appState = 'IDLE';
-        contactChk.checked = false;
+        resultsView.classList.add('hidden'); scannerView.classList.remove('hidden');
+        debugPanel.classList.add('hidden'); appState = 'IDLE'; contactChk.checked = false;
         statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
     });
 
@@ -268,14 +193,12 @@
         if (contactChk.checked && streamActive) {
             debugPanel.classList.add('hidden'); 
             setTimeout(() => {
-                darkIntensity = getRawBlue();
-                appState = 'WAIT_LIGHT';
-                statusText.innerText = "🌑 Tma uložena. Zapni 5s sekvenci na krabičce...";
+                darkIntensity = getRawBlue(); appState = 'WAIT_LIGHT';
+                statusText.innerText = "🌑 Tma uložena. Zapni test (Tlačítko 1 nebo 2)...";
                 targetBox.style.borderColor = "#00e5ff";
             }, 300);
         } else {
-            appState = 'IDLE';
-            statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
+            appState = 'IDLE'; statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
             targetBox.style.borderColor = "#00e5ff";
         }
     });
@@ -297,155 +220,100 @@
         if (displayPercent < 0) displayPercent = 0;
 
         if (appState === 'IDLE') {
-            displayPercent = 0;
-            signalText.innerText = "ČEKÁM NA ZAŠKRTNUTÍ KALIBRACE";
-        } 
-        else if (appState === 'WAIT_LIGHT') {
+            displayPercent = 0; signalText.innerText = "ČEKÁM NA ZAŠKRTNUTÍ KALIBRACE";
+        } else if (appState === 'WAIT_LIGHT') {
             signalText.innerText = `ČEKÁM NA SVĚTLO`;
             if (currentBlue > darkIntensity + 20) {
-                appState = 'BLIND_SYNC';
-                syncStartTime = Date.now();
-                calibrationSamples = [];
-                targetBox.style.borderColor = "#4caf50";
-                targetBox.style.borderStyle = "solid";
+                appState = 'BLIND_SYNC'; syncStartTime = Date.now();
+                targetBox.style.borderColor = "#4caf50"; targetBox.style.borderStyle = "solid";
             }
-        } 
-        else if (appState === 'BLIND_SYNC') {
+        } else if (appState === 'BLIND_SYNC') {
             displayPercent = 100;
-            calibrationSamples.push(currentBlue);
             let elapsedMs = Date.now() - syncStartTime;
-            
-            statusText.innerText = `🔒 SYNC: Zklidňuji foťák... (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
-            signalText.innerText = `IGNORUJI VÝKYVY: ${currentBlue.toFixed(0)}`;
+            statusText.innerText = `🔒 SYNC: NEHÝBEJ S TELEFONEM! (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
+            signalText.innerText = `IGNORUJI VÝKYVY...`;
             
             if (elapsedMs >= 3500) {
-                appState = 'WAIT_DROP';
-                let recentSamples = calibrationSamples.slice(-30);
-                brightIntensity = recentSamples.reduce((a,b)=>a+b, 0) / recentSamples.length;
+                appState = 'WAIT_DROP'; brightIntensity = currentBlue; 
                 dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.4; 
                 statusText.innerText = "⚠️ PŘIPRAVENO: Čekám na zhasnutí LED...";
             }
-        }
-        else if (appState === 'WAIT_DROP') {
-            displayPercent = 100;
-            signalText.innerText = `ČEKÁM NA ZHASNUTÍ (Práh: ${dynamicThreshold.toFixed(0)})`;
-            
+        } else if (appState === 'WAIT_DROP') {
+            displayPercent = 100; signalText.innerText = `ČEKÁM NA ZHASNUTÍ (Práh: ${dynamicThreshold.toFixed(0)})`;
             if (currentBlue < dynamicThreshold) {
-                appState = 'RECORD_DATA';
-                collectedSamples = [];
+                appState = 'RECORD_DATA'; recordStartTime = Date.now(); collectedSamples = [];
                 targetBox.style.borderColor = "#ff9800";
-                
-                // Měříme 9 vteřin (Délka PWM přenosu)
-                statusText.innerText = "📥 TELEPORT: Čtu šířku pulzů (Nepouštěj to!)";
-                setTimeout(decodePWM, 9000);
+                statusText.innerText = "📥 TELEPORT: Čtu binární data (Drž telefon!)...";
+                setTimeout(decodeExactBinary, 8500); // Měříme 8,5 s (Tři bajty při 250ms/bit = 7,5s)
             }
-        }
-        else if (appState === 'RECORD_DATA') {
-            signalText.innerText = `ČTU PWM KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
-            collectedSamples.push({
-                time: Date.now(),
-                raw: currentBlue,
-                bit: (currentBlue > dynamicThreshold) ? 1 : 0
-            });
+        } else if (appState === 'RECORD_DATA') {
+            signalText.innerText = `ČTU BINÁRNÍ KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
+            collectedSamples.push({ time: Date.now(), raw: currentBlue, bit: (currentBlue > dynamicThreshold) ? 1 : 0 });
         }
 
         signalBar.style.width = displayPercent + "%";
-        
-        if (!scannerView.classList.contains('hidden')) {
-            requestAnimationFrame(runMainLoop);
-        }
+        if (!scannerView.classList.contains('hidden')) { requestAnimationFrame(runMainLoop); }
     }
 
-    // NEPRŮSTŘELNÝ PWM DEKODÉR (Televizní ovladač mód)
-    function decodePWM() {
+    // VOJENSKY PŘESNÝ DEKODÉR PRO RYCHLOST 250 MS
+    function decodeExactBinary() {
         appState = 'IDLE'; 
-        targetBox.style.borderColor = "#00e5ff";
-        targetBox.style.borderStyle = "dashed";
-        contactChk.checked = false; 
+        targetBox.style.borderColor = "#00e5ff"; targetBox.style.borderStyle = "dashed"; contactChk.checked = false; 
 
-        if (collectedSamples.length < 20) {
-            statusText.innerText = "Chyba: Záznam dat je příliš krátký.";
-            return;
-        }
+        if (collectedSamples.length < 20) { statusText.innerText = "Chyba: Záznam dat je příliš krátký."; return; }
 
-        // 1. Zredukujeme data na samotné pulzy a změříme jejich délku v ms
-        let pulses = [];
-        let currentState = collectedSamples[0].bit;
-        let startTime = collectedSamples[0].time;
-        
-        for (let i = 1; i < collectedSamples.length; i++) {
-            if (collectedSamples[i].bit !== currentState) {
-                let duration = collectedSamples[i].time - startTime;
-                if (duration > 30) { // Ignorujeme mikrošum pod 30ms
-                    pulses.push({ state: currentState, duration: duration });
-                }
-                currentState = collectedSamples[i].bit;
-                startTime = collectedSamples[i].time;
-            }
-        }
-        pulses.push({ state: currentState, duration: Date.now() - startTime });
-
-        // Grafické zobrazení na osciloskopu
         let htmlGraph = "";
-        collectedSamples.forEach(sample => {
-            htmlGraph += `<div class="tl-${sample.bit}" title="Jas: ${sample.raw.toFixed(0)}"></div>`;
-        });
+        collectedSamples.forEach(sample => { htmlGraph += `<div class="tl-${sample.bit}"></div>`; });
         debugTimeline.innerHTML = htmlGraph;
         debugPanel.classList.remove('hidden');
 
-        // 2. Najdeme velký START pulz (Musí svítit déle než 350ms)
-        let startIdx = pulses.findIndex(p => p.state === 1 && p.duration >= 350);
-        
-        if (startIdx === -1) {
-            statusText.innerText = `Chyba signálu. Nenašel jsem START pulz. Foťák možná oslepl.`;
-            debugStats.innerText = `Počet nalezených pulzů: ${pulses.length}`;
-            return;
-        }
-
-        // 3. Extrakce bitů podle délky svícení (šířky pulzu)
-        let bits = [];
-        for (let i = startIdx + 1; i < pulses.length; i++) {
-            if (pulses[i].state === 1) { // Měříme jen světlo
-                if (pulses[i].duration >= 40 && pulses[i].duration <= 170) {
-                    bits.push(0); // Krátký pulz = 0
-                } else if (pulses[i].duration > 170 && pulses[i].duration < 400) {
-                    bits.push(1); // Dlouhý pulz = 1
-                }
+        // Odstranění šumu (vyhlazení drobných zákmitek)
+        let edges = [];
+        let currentState = collectedSamples[0].bit;
+        for (let i = 0; i < collectedSamples.length - 2; i++) {
+            let b0 = collectedSamples[i].bit; let b1 = collectedSamples[i+1].bit; let b2 = collectedSamples[i+2].bit;
+            if (b0 === b1 && b1 === b2 && b0 !== currentState) {
+                currentState = b0; edges.push({ time: collectedSamples[i].time, state: currentState });
             }
         }
 
-        debugStats.innerText = `Nalezeno ${bits.length} bitů. Počet bloků světla: ${pulses.filter(p=>p.state===1).length}`;
-
-        // Potřebujeme přečíst aspoň 24 bitů (3 bajty)
-        if (bits.length < 24) {
-            statusText.innerText = `Chyba. Přečetl jsem jen ${bits.length} bitů z 24. Pohnuls telefonem.`;
-            return;
+        function getBitAtTime(targetTime) {
+            let closest = collectedSamples.reduce((a, b) => { return Math.abs(b.time - targetTime) < Math.abs(a.time - targetTime) ? b : a; });
+            return closest.bit;
         }
 
-        // 4. Rekonstrukce bajtů odzadu dopředu (LSB first)
-        let bytes = [0, 0, 0];
+        let bytes = [];
+        let searchStartTime = recordStartTime;
+        let BIT_TIME = 250; // <--- Naše klíčová konstanta (musí sedět s #define v Arduinu)
+
         for (let b = 0; b < 3; b++) {
+            // Najdeme Start bit pro tento bajt
+            let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
+            if (!startEdge) { bytes.push(0); continue; }
+
+            let byteStartTime = startEdge.time;
+            let decodedByte = 0;
+            
+            // Čas pro čtení prvního bitu (Start bit má 250ms, skáčeme do půlky prvního datového bitu = +375ms)
+            let readTime = byteStartTime + BIT_TIME + (BIT_TIME / 2); 
+            
             for (let i = 0; i < 8; i++) {
-                let bitIndex = (b * 8) + i;
-                if (bits[bitIndex] === 1) {
-                    bytes[b] |= (1 << i);
-                }
+                if (getBitAtTime(readTime) === 1) { decodedByte |= (1 << i); }
+                readTime += BIT_TIME; 
             }
+            bytes.push(decodedByte);
+            
+            // Přeskočíme zbytek dat, Stop bit a mezery k dalšímu Start bitu
+            searchStartTime = byteStartTime + (BIT_TIME * 10); 
         }
 
-        debugStats.innerText += ` | Výsledek: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}]`;
+        debugStats.innerText = `Dekódováno: [${bytes[0]}] [${bytes[1]}] [${bytes[2]}] (Rychlost: ${BIT_TIME} ms)`;
 
-        // 5. Validace a zobrazení
         if (bytes[0] === 170) {
-            beers = bytes[1];
-            minutes = bytes[2];
-
+            beers = bytes[1]; minutes = bytes[2];
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
-            
-            scannerView.classList.add('hidden');
-            resultsView.classList.remove('hidden');
-            
+            scannerView.classList.add('hidden'); resultsView.classList.remove('hidden');
             calculateAlcohol();
         } else {
             statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170).`;
@@ -456,10 +324,8 @@
 
     function formatTime(hoursDec) {
         if (hoursDec <= 0) return "Můžeš rovnou vyrazit!";
-        let h = Math.floor(hoursDec);
-        let m = Math.round((hoursDec - h) * 60);
-        if (h === 0) return `Za ${m} minut`;
-        return `Za ${h} h a ${m} min`;
+        let h = Math.floor(hoursDec); let m = Math.round((hoursDec - h) * 60);
+        if (h === 0) return `Za ${m} minut`; return `Za ${h} h a ${m} min`;
     }
 
     function calculateAlcohol() {
@@ -473,10 +339,7 @@
         if (promile < 0) promile = 0;
 
         document.getElementById('promile-val').innerText = promile.toFixed(2) + " ‰";
-        
-        let gifUrl = "";
-        let dateText = "";
-
+        let gifUrl = ""; let dateText = "";
         let timeToDrive = promile / 0.15;
         let timeToBike = promile > 0.3 ? (promile - 0.3) / 0.15 : 0; 
 
@@ -513,7 +376,6 @@
             gifUrl = "https://media.giphy.com/media/d9y72oR5uFq2q/giphy.gif"; 
             dateText = "Leda že by se jí líbilo tvoje chrápání. Jdi spát.";
         }
-
         document.getElementById('date-val').innerText = dateText;
         document.getElementById('reaction-gif').src = gifUrl;
     }
