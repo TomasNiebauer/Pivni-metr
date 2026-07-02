@@ -41,12 +41,13 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 30px;
-            height: 30px;
+            width: 35px;
+            height: 35px;
             border: 3px dashed #00e5ff;
             border-radius: 6px;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
             pointer-events: none;
+            transition: all 0.2s ease;
         }
 
         /* Indikátor modrého signálu */
@@ -114,9 +115,8 @@
             text-align: center;
             font-size: 46px;
             font-weight: bold;
-            color: #ff5252;
+            color: #fff;
             margin: 10px 0;
-            text-shadow: 0 2px 10px rgba(255,82,82,0.3);
         }
         .status-text {
             text-align: center;
@@ -147,7 +147,7 @@
     
     <div class="camera-container">
         <video id="webcam" autoplay playsinline muted></video>
-        <div class="target-box"></div>
+        <div class="target-box" id="target-box"></div>
     </div>
 
     <div class="signal-container">
@@ -194,6 +194,7 @@
     const startBtn = document.getElementById('start-cam-btn');
     const signalBar = document.getElementById('signal-bar');
     const signalText = document.getElementById('signal-text');
+    const targetBox = document.getElementById('target-box');
 
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
@@ -224,11 +225,9 @@
         }
     });
 
-    // Funkce, která analyzuje čistě MODRÝ kanál v terči
     function getBlueIntensity() {
         if (!streamActive || video.videoWidth === 0) return 0;
         
-        // Vykreslení středu videa na plátno 30x30 px
         ctx.drawImage(video, video.videoWidth/2 - 15, video.videoHeight/2 - 15, 30, 30, 0, 0, 30, 30);
         const imgData = ctx.getImageData(0, 0, 30, 30);
         
@@ -247,13 +246,10 @@
         let avgBlue = totalBlue / (30 * 30);
         let avgRedGreen = totalRedGreen / (30 * 30);
 
-        // Skutečná "čistá" modrá: jak moc modrá dominuje nad ostatními barvami
         let blueDominance = avgBlue - avgRedGreen;
         if (blueDominance < 0) blueDominance = 0;
 
-        // Převod na procenta (0 až 100)
-        let signalPercent = Math.min(Math.round((blueDominance / 150) * 100), 100);
-        return signalPercent;
+        return Math.min(Math.round((blueDominance / 140) * 100), 100);
     }
 
     function processFrame() {
@@ -261,33 +257,39 @@
         
         let blueSignal = getBlueIntensity();
         
-        // Živá aktualizace modrého ukazatele signálu
         signalBar.style.width = blueSignal + "%";
         signalText.innerText = `SIGNÁL LED: ${blueSignal}%`;
 
-        // Považujeme LED za rozsvícenou, pokud je modrý signál nad 35 %
-        let bit = (blueSignal > 35) ? 1 : 0;
+        // Citlivost na rozsvícení (30 %)
+        let bit = (blueSignal > 30) ? 1 : 0;
         bitStream.push(bit);
         if (bitStream.length > 300) bitStream.shift();
 
         if (!isDecoding) {
-            // Sledujeme, jestli LEDka svítí nepřerušovaně (začátek těch 2 sekund pro zaostření)
-            let recent = bitStream.slice(-40); // cca posledních 0.5 vteřiny
-            let solidMatches = recent.filter(b => b === 1).length;
+            // Zjišťujeme, zda LED svítí trvale (průvodní sekvence spárování)
+            let recent = bitStream.slice(-30); // cca 0.4 sekundy zpět
+            let solidOnCount = recent.filter(b => b === 1).length;
             
-            // Pokud posledního půl vteřiny svítí stabilně čistá modrá, spustíme odpočet přenosu
-            if (solidMatches > 35 && recent.length >= 40) {
+            // JASNÁ ZPĚTNÁ VAZBA: Pokud web vidí solidní signál, dá ti vědět, že detekoval začátek
+            if (solidOnCount > 25 && recent.length >= 30) {
                 isDecoding = true;
-                statusText.innerText = "🔐 Expozice uzamčena. Drž stabilně...";
+                
+                // Vizuální akce na webu: Terč zezelená a ohlásí synchronizaci!
+                targetBox.style.borderColor = "#4caf50"; 
+                targetBox.style.borderStyle = "solid";
+                statusText.innerText = "🔒 SYNC: Drž stabilně, foťák ostří...";
+                
                 bitStream = [];
                 
-                // Počkáme 1.5 vteřiny (zbytek času trvalého svícení) a pak víme, že ATtiny začne blikat data
+                // Počkáme 1.6 vteřiny (zbytek té 2vteřinové přípravy ATtiny), než čip začne blikat data
                 setTimeout(() => {
-                    statusText.innerText = "⚡ Stahuji data z matrixu...";
+                    statusText.innerText = "⚡ PŘENOS: Stahuji data z paměti čipu...";
+                    targetBox.style.borderColor = "#ff9800"; // Terč zoranžoví při stahování dat
                     bitStream = [];
-                    // Samotný bleskový přenos trvá 400ms
+                    
+                    // Nahráváme bity 450 milisekund
                     setTimeout(decodeOpticalData, 450);
-                }, 1500);
+                }, 1600);
             }
         }
 
@@ -295,15 +297,20 @@
     }
 
     function decodeOpticalData() {
+        // Vrátíme terč do původního stavu
+        targetBox.style.borderColor = "#00e5ff";
+        targetBox.style.borderStyle = "dashed";
+
         let pulses = 0;
         for(let i = 1; i < bitStream.length; i++) {
             if(bitStream[i] !== bitStream[i-1]) pulses++;
         }
 
+        // Diagnostický výpis: pokud se nic nestáhlo, napíšeme kolik pulsů web reálně zachytil
         if (pulses > 4) {
             beers = Math.floor(pulses / 4) || 1; 
-            if(beers > 30) beers = 3; 
-            minutes = Math.floor(pulses * 3) || 15;
+            if(beers > 35) beers = 4; // Bezpečnostní strop
+            minutes = Math.floor(pulses * 3.2) || 10;
             
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
@@ -311,14 +318,14 @@
             statusText.innerText = "Data úspěšně přenesena! 🍻";
             calculateAlcohol();
         } else {
-            statusText.innerText = "Chyba čtení. Zkus to znovu.";
+            statusText.innerText = `Chyba přenosu (Zachyceno jen ${pulses} změn). Zkus to blíž.`;
         }
         
         setTimeout(() => {
             isDecoding = false;
             if(streamActive) statusText.innerText = "Připraveno na další teleport...";
             bitStream = [];
-        }, 3000);
+        }, 3500);
     }
 
     function calculateAlcohol() {
@@ -327,7 +334,7 @@
         
         if (!weight || beers === 0) return;
 
-        const alcoholGrams = beers * 20; // 20g na jedno 11° pivo
+        const alcoholGrams = beers * 20; 
         let promile = (alcoholGrams / (weight * r)) - (0.15 * (minutes / 60));
         if (promile < 0) promile = 0;
 
