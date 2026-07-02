@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pivní Metr & Teleport Dat</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 450px;
+            width: 100%;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h1 { text-align: center; color: #ffb300; margin-bottom: 20px; font-size: 24px; }
+        
+        /* Sekce kamery a zaměřovače */
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 2px solid #333;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .target-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 3px dashed #ffb300;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        /* Formulář */
+        .setup-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        label { font-size: 14px; color: #aaa; margin-bottom: 4px; grid-column: span 2; }
+        select, input {
+            background: #333;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        /* Výsledky */
+        .results {
+            background: #252525;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #ffb300;
+            margin-bottom: 15px;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .result-row:last-child { margin-bottom: 0; }
+        .value { font-weight: bold; color: #fff; }
+        .promile-large {
+            text-align: center;
+            font-size: 42px;
+            font-weight: bold;
+            color: #ff5252;
+            margin: 15px 0;
+            text-shadow: 0 2px 10px rgba(255,82,82,0.3);
+        }
+        
+        .status-text {
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            font-style: italic;
+        }
+        
+        button {
+            width: 100%;
+            background: #ffb300;
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #ffa000; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍻 PIVNÍ TELEPORT</h1>
+    
+    <div class="camera-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div class="target-box"></div>
+    </div>
+
+    <div class="setup-form">
+        <div style="grid-column: span 1;">
+            <span style="font-size: 12px; color: #aaa;">Pohlaví</span>
+            <select id="gender">
+                <option value="0.7">Muž</option>
+                <option value="0.6">Žena</option>
+            </select>
+        </div>
+        <div style="grid-column: span 1;">
+            <span style="font-size: 12px; color: #aaa;">Váha (kg)</span>
+            <input type="number" id="weight" value="80" min="40" max="200">
+        </div>
+    </div>
+
+    <div class="results">
+        <div class="result-row">
+            <span>Počet piv:</span>
+            <span class="value" id="beer-count-val">0 ks</span>
+        </div>
+        <div class="result-row">
+            <span>Doba pití:</span>
+            <span class="value" id="time-val">0 min</span>
+        </div>
+        <div class="promile-large" id="promile-val">0.00 ‰</div>
+        <div class="status-text" id="status-text">Přilož blikající LED na zaměřovač</div>
+    </div>
+
+    <button id="start-cam-btn">Spustit kameru</button>
+</div>
+
+<script>
+    // Tady ve Fázi 4 propojíme logiku kamery a výpočtu.
+    // Pro teď jen načteme minulé hodnoty z paměti, aby to drželo váhu.
+    document.getElementById('weight').value = localStorage.getItem('alko_weight') || 80;
+    document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
+
+    document.getElementById('weight').addEventListener('input', (e) => localStorage.setItem('alko_weight', e.target.value));
+    document.getElementById('gender').addEventListener('change', (e) => localStorage.setItem('alko_gender', e.target.value));
+</script>
+</body>
+</html>
