@@ -237,12 +237,11 @@
     document.getElementById('gender').addEventListener('change', (e) => { localStorage.setItem('alko_gender', e.target.value); calculateAlcohol(); });
 
     let streamActive = false;
-    
-    // Stavy aplikace: 'IDLE', 'WAIT_LIGHT', 'BLIND_SYNC', 'WAIT_DROP', 'RECORD_DATA'
     let appState = 'IDLE'; 
     let syncStartTime = 0;
+    let recordStartTime = 0;
     
-    let sampleInterval = null;
+    // Nové pole, kam ukládáme objekt: { čas_v_ms, logická_hodnota_bitu }
     let collectedSamples = [];
     
     let beers = 0;
@@ -276,7 +275,7 @@
             setTimeout(() => {
                 darkIntensity = getRawBlue();
                 appState = 'WAIT_LIGHT';
-                statusText.innerText = "🌑 Tma uložena. Můžeš zapnout 5s sekvenci na krabičce...";
+                statusText.innerText = "🌑 Tma uložena. Zapni na krabičce dlouhý stisk pro přenos...";
                 targetBox.style.borderColor = "#00e5ff";
             }, 300);
         } else {
@@ -291,9 +290,7 @@
         ctx.drawImage(video, video.videoWidth/2 - 15, video.videoHeight/2 - 15, 30, 30, 0, 0, 30, 30);
         const imgData = ctx.getImageData(0, 0, 30, 30);
         let totalBlue = 0;
-        for (let i = 0; i < imgData.data.length; i += 4) {
-            totalBlue += imgData.data[i+2]; 
-        }
+        for (let i = 0; i < imgData.data.length; i += 4) { totalBlue += imgData.data[i+2]; }
         return totalBlue / 900; 
     }
 
@@ -301,126 +298,139 @@
         if (!streamActive) return;
 
         let currentBlue = getRawBlue();
-        
-        let delta = currentBlue - darkIntensity;
-        if (delta < 0) delta = 0;
-        let maxRange = (brightIntensity > darkIntensity) ? (brightIntensity - darkIntensity) : (255 - darkIntensity);
-        if (maxRange < 1) maxRange = 1;
-        let displayPercent = Math.min(Math.round((delta / maxRange) * 100), 100);
-        
-        // STAV 0: Čekání na kalibraci
+        let displayPercent = Math.min(Math.round(((currentBlue - darkIntensity) / (brightIntensity > darkIntensity ? brightIntensity - darkIntensity : 255 - darkIntensity || 1)) * 100), 100);
+        if (displayPercent < 0) displayPercent = 0;
+
         if (appState === 'IDLE') {
             displayPercent = 0;
             signalText.innerText = "ČEKÁM NA ZAŠKRTNUTÍ KALIBRACE";
         } 
-        
-        // STAV 1: Tma uložena, čekáme na ROZSVÍCENÍ LED
         else if (appState === 'WAIT_LIGHT') {
-            signalText.innerText = `ČEKÁM NA SVĚTLO (Tma: ${darkIntensity.toFixed(0)})`;
-            
-            // Pokud jas prudce stoupne
+            signalText.innerText = `ČEKÁM NA SVĚTLO`;
             if (currentBlue > darkIntensity + 20) {
-                appState = 'BLIND_SYNC'; // Přepínáme do slepého módu
+                appState = 'BLIND_SYNC';
                 syncStartTime = Date.now();
                 calibrationSamples = [];
                 targetBox.style.borderColor = "#4caf50";
                 targetBox.style.borderStyle = "solid";
             }
         } 
-        
-        // STAV 2: SLEPÉ OKNO (Čekáme přesně 3,5 sekundy a ignorujeme výkyvy jasu od kamery)
         else if (appState === 'BLIND_SYNC') {
             displayPercent = 100;
             calibrationSamples.push(currentBlue);
-            
             let elapsedMs = Date.now() - syncStartTime;
-            let elapsedSec = (elapsedMs / 1000).toFixed(1);
             
-            statusText.innerText = `🔒 SYNC: Stabilizuji expozici kamery... (${elapsedSec}s / 3.5s)`;
+            statusText.innerText = `🔒 SYNC: Ostřím kameru... (${(elapsedMs / 1000).toFixed(1)}s / 3.5s)`;
             signalText.innerText = `IGNORUJI VÝKYVY: ${currentBlue.toFixed(0)}`;
             
             if (elapsedMs >= 3500) {
-                // Slepé okno uběhlo, foťák se uklidnil. Vypočítáme skutečný jas z posledních vzorků.
                 appState = 'WAIT_DROP';
-                
-                // Vezmeme průměr jen z poslední 1 sekundy (kdy už expozice foťáku neblázní)
                 let recentSamples = calibrationSamples.slice(-30);
                 brightIntensity = recentSamples.reduce((a,b)=>a+b, 0) / recentSamples.length;
                 dynamicThreshold = darkIntensity + (brightIntensity - darkIntensity) * 0.5;
-                
-                statusText.innerText = "⚠️ PŘIPRAVENO: Nyní čekám na zhasnutí LED pro start dat...";
+                statusText.innerText = "⚠️ PŘIPRAVENO: Čekám na zhasnutí LED...";
             }
         }
-        
-        // STAV 3: Expozice ustálena, 3.5s uběhlo, teď čekáme až LEDka poprvé ZHASNE
         else if (appState === 'WAIT_DROP') {
             displayPercent = 100;
             signalText.innerText = `ČEKÁM NA ZHASNUTÍ (Práh: ${dynamicThreshold.toFixed(0)})`;
             
-            // LEDka zhasla! Začíná přenos
+            // Moment, kdy LED poprvé zhasne! Nastavujeme absolutní nulu stopek (recordStartTime)
             if (currentBlue < dynamicThreshold) {
                 appState = 'RECORD_DATA';
-                targetBox.style.borderColor = "#ff9800";
-                statusText.innerText = "📥 TELEPORT: Zhasnuto! Sosám data z blikání...";
-                
+                recordStartTime = Date.now(); // Přesný okamžik T=0
                 collectedSamples = [];
-                sampleInterval = setInterval(() => {
-                    let sampleBlue = getRawBlue();
-                    let bit = (sampleBlue > dynamicThreshold) ? 1 : 0;
-                    collectedSamples.push(bit);
-                }, 100);
-
-                setTimeout(decodeSlowOpticalData, 3800);
+                
+                targetBox.style.borderColor = "#ff9800";
+                statusText.innerText = "📥 TELEPORT: Čtu binární data (150ms bit)...";
+                
+                // Zpomalená sekvence posílá data 4.5 sekundy. My počkáme 5.5 sekund pro jistotu.
+                setTimeout(decodeExactBinary, 5500);
             }
         }
-        
-        // STAV 4: Nahrávání dat
         else if (appState === 'RECORD_DATA') {
-            signalText.innerText = `PŘENOS DAT: ${displayPercent}%`;
+            signalText.innerText = `ČTU BINÁRNÍ KÓD...`;
+            // Ukládáme přesný čas framu z kamery a logický stav 1/0
+            collectedSamples.push({
+                time: Date.now(),
+                bit: (currentBlue > dynamicThreshold) ? 1 : 0
+            });
         }
 
         signalBar.style.width = displayPercent + "%";
         requestAnimationFrame(runMainLoop);
     }
 
-    function decodeSlowOpticalData() {
-        clearInterval(sampleInterval);
+    // NOVÝ, ABSOLUTNĚ PŘESNÝ MATEMATICKÝ DEKODÉR
+    function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff";
         targetBox.style.borderStyle = "dashed";
         contactChk.checked = false; 
 
-        let edges = 0;
-        for (let i = 1; i < collectedSamples.length; i++) {
-            if (collectedSamples[i] !== collectedSamples[i-1]) {
-                edges++;
-            }
+        if (collectedSamples.length === 0) return;
+
+        // Pomocná funkce, která najde v našem záznamu hodnotu bitu přesně v daný čas (offset od zhasnutí)
+        function getBitAtOffset(msOffset) {
+            let targetTime = recordStartTime + msOffset;
+            let closest = collectedSamples.reduce((a, b) => {
+                return Math.abs(b.time - targetTime) < Math.abs(a.time - targetTime) ? b : a;
+            });
+            return closest.bit;
         }
 
-        if (edges >= 6) {
-            beers = Math.round((edges - 4) / 4); 
-            if (beers < 1) beers = 1;
-            if (beers > 40) beers = 3; 
-            
-            minutes = Math.round(edges * 3.5);
+        let byte1 = 0, byte2 = 0, byte3 = 0;
+        
+        // Pauza před startem dat v ATtiny je 450 ms.
+        // Chceme se trefit přesně doprostřed prvního 150ms bitu (Start bit), což je 450 + (150/2) = 525 ms.
+        let offset = 450 + 75; 
+
+        // 1. BAJT (Synchronizační znak 0xAA, což je 170)
+        let start1 = getBitAtOffset(offset); offset += 150;
+        for(let i=0; i<8; i++) {
+            if (getBitAtOffset(offset) === 1) byte1 |= (1 << i);
+            offset += 150;
+        }
+        let stop1 = getBitAtOffset(offset); offset += 150;
+
+        // 2. BAJT (Počet piv)
+        let start2 = getBitAtOffset(offset); offset += 150;
+        for(let i=0; i<8; i++) {
+            if (getBitAtOffset(offset) === 1) byte2 |= (1 << i);
+            offset += 150;
+        }
+        let stop2 = getBitAtOffset(offset); offset += 150;
+
+        // 3. BAJT (Uplynulý čas v minutách)
+        let start3 = getBitAtOffset(offset); offset += 150;
+        for(let i=0; i<8; i++) {
+            if (getBitAtOffset(offset) === 1) byte3 |= (1 << i);
+            offset += 150;
+        }
+        let stop3 = getBitAtOffset(offset); 
+
+        // Ochranná validace: Start bity musí být 1, Stop bity musí být 0 a První bajt musí být kontrolních 170 (0xAA)!
+        if (start1 === 1 && stop1 === 0 && start2 === 1 && stop2 === 0 && byte1 === 170) {
+            beers = byte2;
+            minutes = byte3;
 
             document.getElementById('beer-count-val').innerText = beers + " ks";
             document.getElementById('time-val').innerText = minutes + " min";
-            statusText.innerText = "Teleport úspěšný! Data rozšifrována. 🍻";
+            statusText.innerText = "🎯 100% ÚSPĚCH! Binární kód sedí.";
             
             dataPanel.classList.remove('hidden');
             calculateAlcohol();
         } else {
-            statusText.innerText = `Chyba přenosu (Signál znehodnocen, zachyceno jen ${edges} hran). Zkus to znovu.`;
+            statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${byte1} (má být 170). Zkus to znovu.`;
             dataPanel.classList.add('hidden');
         }
 
         setTimeout(() => {
             collectedSamples = [];
             if (streamActive && appState === 'IDLE') {
-                statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko pro další měření...";
+                statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko...";
             }
-        }, 4000);
+        }, 3000);
     }
 
     function calculateAlcohol() {
