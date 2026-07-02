@@ -98,7 +98,7 @@
         </div>
 
         <div id="debug-panel" class="debug-panel hidden">
-            <span class="debug-title">Osciloskop (Očekávaná rychlost 250ms/bit)</span>
+            <span class="debug-title">Osciloskop (Rychlost 130ms/bit)</span>
             <div class="debug-timeline" id="debug-timeline"></div>
             <div class="debug-stats" id="debug-stats">...</div>
         </div>
@@ -244,7 +244,7 @@
                 appState = 'RECORD_DATA'; recordStartTime = Date.now(); collectedSamples = [];
                 targetBox.style.borderColor = "#ff9800";
                 statusText.innerText = "📥 TELEPORT: Čtu binární data (Drž telefon!)...";
-                setTimeout(decodeExactBinary, 8500); // Měříme 8,5 s (Tři bajty při 250ms/bit = 7,5s)
+                setTimeout(decodeExactBinary, 5000); // <--- ZRYCHLENÝ ČAS NAHRÁVÁNÍ (5 sekund)
             }
         } else if (appState === 'RECORD_DATA') {
             signalText.innerText = `ČTU BINÁRNÍ KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
@@ -255,7 +255,7 @@
         if (!scannerView.classList.contains('hidden')) { requestAnimationFrame(runMainLoop); }
     }
 
-    // VOJENSKY PŘESNÝ DEKODÉR PRO RYCHLOST 250 MS
+    // VOJENSKY PŘESNÝ DEKODÉR PRO RYCHLOST 130 MS
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff"; targetBox.style.borderStyle = "dashed"; contactChk.checked = false; 
@@ -284,17 +284,15 @@
 
         let bytes = [];
         let searchStartTime = recordStartTime;
-        let BIT_TIME = 250; // <--- Naše klíčová konstanta (musí sedět s #define v Arduinu)
+        let BIT_TIME = 130; // <--- Naše klíčová konstanta (ZRYCHLENO)
 
         for (let b = 0; b < 3; b++) {
-            // Najdeme Start bit pro tento bajt
             let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
             if (!startEdge) { bytes.push(0); continue; }
 
             let byteStartTime = startEdge.time;
             let decodedByte = 0;
             
-            // Čas pro čtení prvního bitu (Start bit má 250ms, skáčeme do půlky prvního datového bitu = +375ms)
             let readTime = byteStartTime + BIT_TIME + (BIT_TIME / 2); 
             
             for (let i = 0; i < 8; i++) {
@@ -302,8 +300,6 @@
                 readTime += BIT_TIME; 
             }
             bytes.push(decodedByte);
-            
-            // Přeskočíme zbytek dat, Stop bit a mezery k dalšímu Start bitu
             searchStartTime = byteStartTime + (BIT_TIME * 10); 
         }
 
