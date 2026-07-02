@@ -98,7 +98,7 @@
         </div>
 
         <div id="debug-panel" class="debug-panel hidden">
-            <span class="debug-title">Osciloskop (Rychlost 130ms/bit)</span>
+            <span class="debug-title">Osciloskop (Rychlost 180ms/bit)</span>
             <div class="debug-timeline" id="debug-timeline"></div>
             <div class="debug-stats" id="debug-stats">...</div>
         </div>
@@ -244,7 +244,10 @@
                 appState = 'RECORD_DATA'; recordStartTime = Date.now(); collectedSamples = [];
                 targetBox.style.borderColor = "#ff9800";
                 statusText.innerText = "📥 TELEPORT: Čtu binární data (Drž telefon!)...";
-                setTimeout(decodeExactBinary, 5000); // <--- ZRYCHLENÝ ČAS NAHRÁVÁNÍ (5 sekund)
+                
+                // OPRAVENO: Zvýšen čas na 6500ms. Při 180ms trvají 3 bajty 5400ms!
+                // Původních 5000ms usekávalo konec signálu.
+                setTimeout(decodeExactBinary, 6500); 
             }
         } else if (appState === 'RECORD_DATA') {
             signalText.innerText = `ČTU BINÁRNÍ KÓD... SÍLA: ${currentBlue.toFixed(0)}`;
@@ -255,7 +258,7 @@
         if (!scannerView.classList.contains('hidden')) { requestAnimationFrame(runMainLoop); }
     }
 
-    // VOJENSKY PŘESNÝ DEKODÉR PRO RYCHLOST 130 MS
+    // VOJENSKY PŘESNÝ DEKODÉR
     function decodeExactBinary() {
         appState = 'IDLE'; 
         targetBox.style.borderColor = "#00e5ff"; targetBox.style.borderStyle = "dashed"; contactChk.checked = false; 
@@ -284,7 +287,9 @@
 
         let bytes = [];
         let searchStartTime = recordStartTime;
-        let BIT_TIME = 180; // <--- Naše klíčová konstanta (ZRYCHLENO)
+        
+        // OPRAVENO: Nastavení správného času bitu
+        let BIT_TIME = 180; 
 
         for (let b = 0; b < 3; b++) {
             let startEdge = edges.find(e => e.time > searchStartTime && e.state === 1);
