@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pivní Metr & Teleport Dat</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,11 +13,24 @@
         }
         .container {
             max-width: 450px; width: 100%; background: #1e1e1e;
-            padding: 18px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            padding: 15px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        h1 { text-align: center; color: #00e5ff; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 10px rgba(0,229,255,0.2); }
+        h1 { text-align: center; color: #00e5ff; margin-bottom: 20px; font-size: 22px; text-shadow: 0 0 10px rgba(0,229,255,0.2); }
         .hidden { display: none !important; }
 
+        /* --- ÚVODNÍ OBRAZOVKA (WELCOME SCREEN) --- */
+        #welcome-view {
+            background: #1a1a1a; padding: 20px; border-radius: 12px;
+            border: 1px solid #333; margin-bottom: 15px;
+        }
+        #welcome-view h2 { color: #00e5ff; font-size: 20px; margin-bottom: 12px; text-align: center; }
+        #welcome-view p { color: #ccc; font-size: 14px; margin-bottom: 15px; line-height: 1.5; }
+        #welcome-view h3 { color: #fff; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        #welcome-view ol { color: #aaa; font-size: 14px; margin-left: 20px; margin-bottom: 20px; line-height: 1.6; }
+        #welcome-view li { margin-bottom: 8px; }
+        #welcome-view li strong { color: #fff; }
+
+        /* --- SKENER --- */
         .camera-container {
             position: relative; width: 100%; height: 250px; background: #0d0d0d;
             border-radius: 12px; overflow: hidden; margin-bottom: 15px; border: 2px solid #333;
@@ -29,7 +42,7 @@
             transform: translate(-50%, -50%); width: 35px; height: 35px;
             border: 3px dashed #00e5ff; border-radius: 6px; pointer-events: none;
         }
-        .camera-placeholder { color: #555; font-size: 14px; font-weight: bold; }
+        .camera-placeholder { color: #555; font-size: 14px; font-weight: bold; text-align: center; padding: 10px; }
 
         .signal-container {
             width: 100%; background: #222; border-radius: 6px; height: 25px;
@@ -55,39 +68,74 @@
         .tl-0 { flex: 1; background: #1a1a1a; height: 100%; }
         .debug-stats { font-family: monospace; font-size: 11px; color: #00e5ff; margin-top: 8px; text-align: center; }
 
-        .setup-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        /* --- VÝSLEDKY A FORMULÁŘE --- */
+        .setup-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #2a2a2a; padding: 12px; border-radius: 12px; margin-bottom: 15px; }
         .full-width { grid-column: span 2; }
-        select, input { background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; font-size: 16px; width: 100%; margin-top: 5px; }
+        select, input { background: #1e1e1e; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; font-size: 15px; width: 100%; margin-top: 5px; }
 
-        .results { background: #252525; padding: 15px; border-radius: 12px; border-left: 4px solid #00e5ff; margin-bottom: 15px; }
-        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
+        .results { background: #252525; padding: 12px; border-radius: 12px; border-left: 4px solid #00e5ff; margin-bottom: 15px; }
+        
+        /* Zmenšené a optimalizované karty pro drinky */
+        .unallocated { text-align: center; font-size: 13px; color: #ff9800; margin-bottom: 15px; font-weight: bold; }
+        
+        .drink-card { 
+            background: #1e1e1e; padding: 10px; border-radius: 8px; 
+            margin-bottom: 10px; border: 1px solid #333; 
+        }
+        .drink-header-row { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #333;
+        }
+        .drink-header-row span { font-size: 15px; color: #fff; font-weight: bold; }
+        
+        /* Tlačítka zmenšena a stažena k sobě */
+        .drink-controls { display: flex; align-items: center; gap: 6px; }
+        .btn-small { 
+            width: 30px; height: 30px; font-size: 20px; display: flex; align-items: center; 
+            justify-content: center; background: #333; color: #00e5ff; cursor: pointer; 
+            border: none; border-radius: 6px; padding: 0; margin: 0;
+        }
+        .btn-small:hover { background: #555; }
+        .drink-count { font-size: 16px; font-weight: bold; color: #fff; width: 22px; text-align: center; }
+        
+        .drink-details-row { display: flex; gap: 8px; }
+        .drink-input-wrapper { flex: 1; display: flex; flex-direction: column; }
+        .drink-input-wrapper label { font-size: 11px; color: #aaa; margin-bottom: 3px; padding-left: 2px; }
+        .drink-input-wrapper input { 
+            width: 100%; height: 34px; padding: 5px; text-align: center; 
+            background: #121212; border: 1px solid #444; color: #fff; 
+            border-radius: 6px; font-size: 14px; margin-top: 0;
+        }
+
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; }
         .value { font-weight: bold; color: #fff; }
-        .promile-large { text-align: center; font-size: 52px; font-weight: bold; color: #fff; margin: 10px 0; }
+        .promile-large { text-align: center; font-size: 48px; font-weight: bold; color: #fff; margin: 10px 0; }
 
-        .funny-stats { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
-        .funny-row { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #333; }
+        .funny-stats { background: #1a1a1a; border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid #333; }
+        .funny-row { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #333; }
         .funny-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .funny-title { font-size: 13px; color: #aaa; margin-bottom: 4px; display: block; }
-        .funny-val { font-size: 15px; color: #00e5ff; font-weight: bold; }
+        .funny-title { font-size: 12px; color: #aaa; margin-bottom: 4px; display: block; }
+        .funny-val { font-size: 14px; color: #00e5ff; font-weight: bold; }
         .gif-container { width: 100%; text-align: center; }
-        .gif-container img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
-        .status-text { text-align: center; font-size: 14px; color: #00e5ff; font-weight: bold; min-height: 20px; margin-top: 10px; }
-        button { width: 100%; background: #00e5ff; color: #000; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #00b8cc; }
+        .gif-container img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
+        
+        .status-text { text-align: center; font-size: 13px; color: #00e5ff; font-weight: bold; min-height: 20px; margin-top: 10px; }
+        
+        /* Hlavní tlačítka */
+        button.primary-btn { 
+            width: 100%; background: #00e5ff; color: #000; border: none; 
+            padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; 
+            cursor: pointer; transition: 0.2s; 
+        }
+        button.primary-btn:hover { background: #00b8cc; }
+        button.secondary-btn {
+            width: 100%; background: #333; color: #fff; border: none; 
+            padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; 
+            cursor: pointer; transition: 0.2s; margin-top: 20px;
+        }
+        button.secondary-btn:hover { background: #444; }
+        
         #analyzer-canvas { display: none; }
-
-        /* UPRAVENÝ MOBILNÍ DESIGN PRO DRINKY (POD SEBOU) */
-        .unallocated { text-align: center; font-size: 13px; color: #ff9800; margin-bottom: 12px; font-weight: bold; background: #1c1814; padding: 8px; border-radius: 6px; border: 1px dashed #ff9800; }
-        .drink-card { display: flex; flex-direction: column; background: #1c1c1c; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #333; gap: 10px; }
-        .drink-header { font-size: 16px; color: #00e5ff; font-weight: bold; border-bottom: 1px solid #2a2a2a; padding-bottom: 6px; }
-        .drink-body { display: flex; justify-content: space-between; align-items: center; }
-        .drink-inputs { display: flex; gap: 4px; align-items: center; }
-        .drink-inputs input { width: 55px; height: 38px; margin: 0; padding: 5px; text-align: center; font-size: 15px; border-color: #555; }
-        .drink-inputs small { color: #aaa; font-size: 13px; margin-right: 6px; font-weight: bold; }
-        .drink-controls { display: flex; align-items: center; gap: 8px; }
-        .btn-small { width: 38px; height: 38px; padding: 0; font-size: 22px; display: flex; align-items: center; justify-content: center; background: #333; color: #00e5ff; cursor: pointer; border: 1px solid #444; border-radius: 8px; }
-        .btn-small:active { background: #00e5ff; color: #000; }
-        .drink-count { font-size: 20px; font-weight: bold; color: #fff; min-width: 24px; text-align: center; }
     </style>
 </head>
 <body>
@@ -95,7 +143,20 @@
 <div class="container">
     <h1>💙 PIVNÍ TELEPORT</h1>
     
-    <div id="scanner-view">
+    <div id="welcome-view">
+        <h2>Vítej v Pivním Teleportu! 🍻</h2>
+        <p>Tato apka funguje jako parťák pro tvůj chytrý hardware na počítání piv. Přenáší data bez drátů nebo Bluetooth – stačí obyčejné světlo!</p>
+        
+        <h3>Jak na to?</h3>
+        <ol>
+            <li><strong>Klikání:</strong> Během večera si zaznamenávej stisky (vypité drinky) do svého Arduina.</li>
+            <li><strong>Teleport:</strong> Klikni na tlačítko níže, přilož LED diodu svého zařízení na foťák telefonu a nech si opticky "přeskočit" data do mobilu.</li>
+            <li><strong>Výpočet:</strong> Rozděl si, co přesně jsi pil (pivo, panáky, víno) a zkontroluj si aktuální promile!</li>
+        </ol>
+        <button id="go-to-scanner-btn" class="primary-btn">Rozumím, jdeme skenovat!</button>
+    </div>
+
+    <div id="scanner-view" class="hidden">
         <div class="camera-container">
             <div id="camera-placeholder" class="camera-placeholder">Kamera čeká na spuštění...</div>
             <video id="webcam" playsinline muted></video>
@@ -116,67 +177,85 @@
             <div class="debug-stats" id="debug-stats">...</div>
         </div>
 
-        <button id="start-cam-btn">Spustit skenování</button>
+        <button id="start-cam-btn" class="primary-btn">Spustit kameru a skenovat</button>
         <div class="status-text" id="status-text">Připraveno ke spuštění</div>
     </div>
 
     <div id="results-view" class="hidden">
         <div class="setup-form">
-            <div><span style="font-size: 12px; color: #aaa;">Pohlaví</span><select id="gender"><option value="0.7">Muž</option><option value="0.6">Žena</option></select></div>
-            <div><span style="font-size: 12px; color: #aaa;">Váha (kg)</span><input type="number" id="weight" value="77" min="40" max="200"></div>
-            <div class="full-width"><span style="font-size: 12px; color: #aaa;">Jídlo během pití</span><select id="food"><option value="1.0">Nic (Na lačno)</option><option value="0.9">Něco málo k zakousnutí</option><option value="0.8">Střední jídlo</option><option value="0.7">Pořádná večeře</option></select></div>
+            <div><span style="font-size: 11px; color: #aaa;">Pohlaví</span><select id="gender"><option value="0.7">Muž</option><option value="0.6">Žena</option></select></div>
+            <div><span style="font-size: 11px; color: #aaa;">Váha (kg)</span><input type="number" id="weight" value="77" min="40" max="200"></div>
+            <div class="full-width"><span style="font-size: 11px; color: #aaa;">Jídlo během pití</span><select id="food"><option value="1.0">Nic (Na lačno)</option><option value="0.9">Něco málo k zakousnutí</option><option value="0.8">Střední jídlo</option><option value="0.7">Pořádná večeře</option></select></div>
         </div>
         
         <div class="results">
-            <div class="unallocated">Celkem stisků z Arduina: <span id="total-presses" style="color:#fff;">0</span> | Rozdělit zbývá: <span id="unallocated-presses">0</span></div>
+            <div class="unallocated">Celkem stisků: <span id="total-presses" style="color:#fff;">0</span> | Nepřiřazeno: <span id="unallocated-presses">0</span></div>
             
             <div class="drink-card">
-                <div class="drink-header">🍺 Pivo</div>
-                <div class="drink-body">
-                    <div class="drink-inputs">
-                        <input type="number" id="beer-vol" value="500" title="Objem v ml"> <small>ml</small>
-                        <input type="number" id="beer-abv" value="4.5" step="0.1" title="Alkohol v %"> <small>%</small>
-                    </div>
+                <div class="drink-header-row">
+                    <span>🍺 Pivo</span>
                     <div class="drink-controls">
                         <button class="btn-small" onclick="adjDrink('beer', -1)">-</button>
                         <div class="drink-count" id="beer-cnt">0</div>
                         <button class="btn-small" onclick="adjDrink('beer', 1)">+</button>
                     </div>
                 </div>
+                <div class="drink-details-row">
+                    <div class="drink-input-wrapper">
+                        <label>Objem (ml)</label>
+                        <input type="number" id="beer-vol" value="500">
+                    </div>
+                    <div class="drink-input-wrapper">
+                        <label>Alkohol (%)</label>
+                        <input type="number" id="beer-abv" value="4.5" step="0.1">
+                    </div>
+                </div>
             </div>
             
             <div class="drink-card">
-                <div class="drink-header">🥃 Panák</div>
-                <div class="drink-body">
-                    <div class="drink-inputs">
-                        <input type="number" id="shot-vol" value="40" title="Objem v ml"> <small>ml</small>
-                        <input type="number" id="shot-abv" value="40" step="1" title="Alkohol v %"> <small>%</small>
-                    </div>
+                <div class="drink-header-row">
+                    <span>🥃 Panák</span>
                     <div class="drink-controls">
                         <button class="btn-small" onclick="adjDrink('shot', -1)">-</button>
                         <div class="drink-count" id="shot-cnt">0</div>
                         <button class="btn-small" onclick="adjDrink('shot', 1)">+</button>
                     </div>
                 </div>
+                <div class="drink-details-row">
+                    <div class="drink-input-wrapper">
+                        <label>Objem (ml)</label>
+                        <input type="number" id="shot-vol" value="40">
+                    </div>
+                    <div class="drink-input-wrapper">
+                        <label>Alkohol (%)</label>
+                        <input type="number" id="shot-abv" value="40" step="1">
+                    </div>
+                </div>
             </div>
 
             <div class="drink-card">
-                <div class="drink-header">🍷 Víno / Ostatní</div>
-                <div class="drink-body">
-                    <div class="drink-inputs">
-                        <input type="number" id="wine-vol" value="200" title="Objem v ml"> <small>ml</small>
-                        <input type="number" id="wine-abv" value="12" step="0.1" title="Alkohol v %"> <small>%</small>
-                    </div>
+                <div class="drink-header-row">
+                    <span>🍷 Víno</span>
                     <div class="drink-controls">
                         <button class="btn-small" onclick="adjDrink('wine', -1)">-</button>
                         <div class="drink-count" id="wine-cnt">0</div>
                         <button class="btn-small" onclick="adjDrink('wine', 1)">+</button>
                     </div>
                 </div>
+                <div class="drink-details-row">
+                    <div class="drink-input-wrapper">
+                        <label>Objem (ml)</label>
+                        <input type="number" id="wine-vol" value="200">
+                    </div>
+                    <div class="drink-input-wrapper">
+                        <label>Alkohol (%)</label>
+                        <input type="number" id="wine-abv" value="12" step="0.1">
+                    </div>
+                </div>
             </div>
 
             <hr style="border-color: #333; margin: 15px 0;">
-            <div class="result-row"><span>Doba od prvního drinku:</span><span class="value" id="time-val">0 min</span></div>
+            <div class="result-row"><span>Rozpětí pití:</span><span class="value" id="time-val">0 min</span></div>
             <div class="promile-large" id="promile-val">0.00 ‰</div>
             <div class="status-text" id="fun-status" style="margin-top:0;">...</div>
         </div>
@@ -187,7 +266,7 @@
             <div class="funny-row"><span class="funny-title">💘 Kdy pozvat někoho na rande?</span><span class="funny-val" id="date-val">Počítám...</span></div>
         </div>
         <div class="gif-container"><img id="reaction-gif" src="" alt="Vibe Check"></div>
-        <button id="scan-again-btn" style="margin-top: 20px; background: #333; color: #fff;">Skenovat znovu</button>
+        <button id="scan-again-btn" class="secondary-btn">Skenovat znovu</button>
     </div>
     <canvas id="analyzer-canvas" width="30" height="30"></canvas>
 </div>
@@ -197,19 +276,31 @@
     const canvas = document.getElementById('analyzer-canvas');
     const ctx = canvas.getContext('2d');
     
+    // Obrazovky
+    const welcomeView = document.getElementById('welcome-view');
     const scannerView = document.getElementById('scanner-view');
     const resultsView = document.getElementById('results-view');
+    
+    // Tlačítka a UI prvky
+    const goToScannerBtn = document.getElementById('go-to-scanner-btn');
+    const startBtn = document.getElementById('start-cam-btn');
+    const scanAgainBtn = document.getElementById('scan-again-btn');
+    
     const placeholder = document.getElementById('camera-placeholder');
     const targetBox = document.getElementById('target-box');
     const debugPanel = document.getElementById('debug-panel');
     const debugTimeline = document.getElementById('debug-timeline');
     const debugStats = document.getElementById('debug-stats');
     const statusText = document.getElementById('status-text');
-    const startBtn = document.getElementById('start-cam-btn');
-    const scanAgainBtn = document.getElementById('scan-again-btn');
     const signalBar = document.getElementById('signal-bar');
     const signalText = document.getElementById('signal-text');
     const contactChk = document.getElementById('close-contact-chk');
+
+    // Přepnutí z úvodní obrazovky do skeneru
+    goToScannerBtn.addEventListener('click', () => {
+        welcomeView.classList.add('hidden');
+        scannerView.classList.remove('hidden');
+    });
 
     document.getElementById('weight').value = localStorage.getItem('alko_weight') || 77;
     document.getElementById('gender').value = localStorage.getItem('alko_gender') || 0.7;
@@ -231,7 +322,7 @@
     let recordStartTime = 0;
     
     let collectedSamples = [];
-    let beers = 0; 
+    let beers = 0; // Celkový počet stisků
     let minutes = 0;
     let drinkCounts = { beer: 0, shot: 0, wine: 0 }; 
 
@@ -252,8 +343,11 @@
     });
 
     scanAgainBtn.addEventListener('click', () => {
-        resultsView.classList.add('hidden'); scannerView.classList.remove('hidden');
-        debugPanel.classList.add('hidden'); appState = 'IDLE'; contactChk.checked = false;
+        resultsView.classList.add('hidden'); 
+        scannerView.classList.remove('hidden');
+        debugPanel.classList.add('hidden'); 
+        appState = 'IDLE'; 
+        contactChk.checked = false;
         statusText.innerText = "Přilož vypnutou LED a zaškrtni políčko!";
         runMainLoop(); 
     });
@@ -379,7 +473,8 @@
             updateDrinkUI();
 
             document.getElementById('time-val').innerText = minutes + " min";
-            scannerView.classList.add('hidden'); resultsView.classList.remove('hidden');
+            scannerView.classList.add('hidden'); 
+            resultsView.classList.remove('hidden');
             calculateAlcohol();
         } else {
             statusText.innerText = `Chyba v signálu. Kontrolní znak byl ${bytes[0]} (má být 170).`;
