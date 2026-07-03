@@ -467,7 +467,7 @@
 
         if (bytes[0] === 170) {
             beers = bytes[1]; 
-            minutes = bytes[2];
+            minutes = bytes[2] * 3;
             
             drinkCounts = { beer: beers, shot: 0, wine: 0 };
             updateDrinkUI();
